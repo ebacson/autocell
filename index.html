@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoCell - Ứng Dụng Quản Lý & Phân Tích Mạng Di Động</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      background: #fafafa;
+      color: #222;
+    }
+    h1, h2, h3, h4 {
+      margin-top: 1.2em;
+      color: #333;
+    }
+    h1 { font-size: 2em; }
+    h2 { font-size: 1.6em; }
+    h3 { font-size: 1.3em; }
+    h4 { font-size: 1.1em; }
+    ul {
+      margin: 0 0 1em 1.5em;
+    }
+    strong { color: #000; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    footer {
+      margin-top: 40px;
+      font-size: 14px;
+      color: #666;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>📱 AutoCell - Ứng Dụng Quản Lý &amp; Phân Tích Mạng Di Động</h1>
+
+    <h2>🎯 Tổng Quan Dự Án</h2>
+    <p><strong>AutoCell</strong> là một ứng dụng di động đa nền tảng (Android &amp; iOS) được thiết kế để thu thập, phân tích và quản lý thông tin mạng di động một cách chuyên nghiệp. Ứng dụng cung cấp các công cụ mạnh mẽ để giám sát chất lượng mạng, xuất báo cáo KML và quản lý dữ liệu cell một cách hiệu quả.</p>
+
+    <h2>🚀 Các Chức Năng Chính</h2>
+
+    <h3>📊 Giám Sát Mạng Real-time</h3>
+    <ul>
+      <li><strong>Thu thập dữ liệu mạng di động</strong> từ thiết bị Android thông qua Telephony API</li>
+      <li><strong>Theo dõi chất lượng tín hiệu</strong> cho tất cả công nghệ mạng (2G, 3G, 4G LTE, 5G NR)</li>
+      <li><strong>Hiển thị thông tin chi tiết</strong> về cell, signal strength, và các thông số kỹ thuật</li>
+      <li><strong>Cập nhật liên tục</strong> vị trí và trạng thái mạng</li>
+    </ul>
+
+    <h3>🗺️ Bản Đồ &amp; Định Tuyến</h3>
+    <ul>
+      <li><strong>Hiển thị bản đồ Google Maps</strong> với các marker cell và route tracking</li>
+      <li><strong>Thu thập dữ liệu route</strong> theo thời gian thực</li>
+      <li><strong>Xuất file KML</strong> với định dạng chuyên nghiệp tương thích Google Earth</li>
+      <li><strong>Marker có màu sắc</strong> theo chất lượng tín hiệu (Excellent/Good/Fair/Poor/Very Poor)</li>
+    </ul>
+
+    <h3>📱 Quản Lý Cell Database</h3>
+    <ul>
+      <li><strong>Thêm/Sửa/Xóa cell</strong> với thông tin chi tiết</li>
+      <li><strong>Copy cell</strong> để tạo nhanh các cell mới</li>
+      <li><strong>Lưu trữ Firebase</strong> với khả năng offline</li>
+      <li><strong>Tìm kiếm và lọc</strong> cell theo nhiều tiêu chí</li>
+    </ul>
+
+    <h3>🔐 Hệ Thống Xác Thực &amp; Phân Quyền</h3>
+    <ul>
+      <li><strong>Đăng nhập Firebase Authentication</strong></li>
+      <li><strong>Phân quyền người dùng</strong> (User/Supporter/Admin)</li>
+      <li><strong>Truy cập có kiểm soát</strong> vào các chức năng nâng cao</li>
+      <li><strong>Bảo mật dữ liệu</strong> người dùng</li>
+    </ul>
+
+    <h3>📈 Báo Cáo &amp; Phân Tích</h3>
+    <ul>
+      <li><strong>Xuất KML chuyên nghiệp</strong> với HTML table formatting</li>
+      <li><strong>Thông tin chi tiết</strong> về tất cả thông số mạng</li>
+      <li><strong>Đánh giá chất lượng</strong> tín hiệu tự động</li>
+      <li><strong>Tương thích Google Earth</strong> và các ứng dụng GIS</li>
+    </ul>
+
+    <h2>🎯 Phạm Vi Áp Dụng</h2>
+
+    <h3>🏢 Viễn Thông &amp; Mạng</h3>
+    <ul>
+      <li><strong>Kỹ sư mạng</strong> cần giám sát chất lượng dịch vụ</li>
+      <li><strong>Nhà cung cấp dịch vụ</strong> muốn tối ưu hóa mạng</li>
+      <li><strong>Đội ngũ bảo trì</strong> cần kiểm tra vùng phủ sóng</li>
+      <li><strong>Quản lý chất lượng</strong> mạng di động</li>
+    </ul>
+
+    <h3>🏗️ Xây Dựng &amp; Bất Động Sản</h3>
+    <ul>
+      <li><strong>Kiến trúc sư</strong> cần đánh giá chất lượng mạng trong thiết kế</li>
+      <li><strong>Chủ đầu tư</strong> muốn kiểm tra vùng phủ sóng</li>
+      <li><strong>Quản lý dự án</strong> cần báo cáo về hạ tầng mạng</li>
+    </ul>
+
+    <h3>🚗 Giao Thông &amp; Vận Tải</h3>
+    <ul>
+      <li><strong>Tài xế</strong> cần kiểm tra chất lượng mạng trên tuyến đường</li>
+      <li><strong>Công ty vận tải</strong> muốn tối ưu hóa route với vùng phủ sóng tốt</li>
+      <li><strong>Quản lý fleet</strong> cần giám sát chất lượng mạng</li>
+    </ul>
+
+    <h3>🏭 Công Nghiệp &amp; Sản Xuất</h3>
+    <ul>
+      <li><strong>Kỹ sư công nghiệp</strong> cần đánh giá mạng trong nhà máy</li>
+      <li><strong>Quản lý sản xuất</strong> muốn đảm bảo kết nối mạng ổn định</li>
+      <li><strong>An toàn lao động</strong> cần kiểm tra vùng phủ sóng khẩn cấp</li>
+    </ul>
+
+    <h3>🏥 Y Tế &amp; Giáo Dục</h3>
+    <ul>
+      <li><strong>Bệnh viện</strong> cần đảm bảo kết nối mạng ổn định</li>
+      <li><strong>Trường học</strong> muốn kiểm tra chất lượng mạng</li>
+      <li><strong>Cơ sở y tế</strong> cần giám sát vùng phủ sóng</li>
+    </ul>
+
+    <h2>💎 Giá Trị Mang Lại</h2>
+
+    <h3>🔧 Cho Kỹ Sư &amp; Chuyên Gia</h3>
+    <ul>
+      <li><strong>Tiết kiệm thời gian</strong> thu thập dữ liệu mạng thủ công</li>
+      <li><strong>Dữ liệu chính xác</strong> với độ tin cậy cao</li>
+      <li><strong>Báo cáo chuyên nghiệp</strong> dễ dàng chia sẻ</li>
+      <li><strong>Phân tích sâu</strong> về chất lượng mạng</li>
+    </ul>
+
+    <h3>💼 Cho Doanh Nghiệp</h3>
+    <ul>
+      <li><strong>Tối ưu hóa mạng</strong> dựa trên dữ liệu thực tế</li>
+      <li><strong>Giảm chi phí</strong> bảo trì và vận hành</li>
+      <li><strong>Tăng chất lượng</strong> dịch vụ khách hàng</li>
+      <li><strong>Ra quyết định</strong> dựa trên dữ liệu</li>
+    </ul>
+
+    <h3>🌍 Cho Xã Hội</h3>
+    <ul>
+      <li><strong>Cải thiện chất lượng</strong> mạng di động</li>
+      <li><strong>Tăng độ tin cậy</strong> của hạ tầng viễn thông</li>
+      <li><strong>Hỗ trợ phát triển</strong> công nghệ 5G</li>
+      <li><strong>Đóng góp vào</strong> chuyển đổi số</li>
+    </ul>
+
+    <h2>🛠️ Công Nghệ Sử Dụng</h2>
+
+    <h3>📱 Frontend</h3>
+    <ul>
+      <li><strong>Android:</strong> Java, Google Maps API, Telephony API</li>
+      <li><strong>iOS:</strong> Swift, MapKit, Core Location</li>
+      <li><strong>UI/UX:</strong> Material Design, iOS Human Interface Guidelines</li>
+    </ul>
+
+    <h3>🔥 Backend &amp; Database</h3>
+    <ul>
+      <li><strong>Firebase Realtime Database</strong> - Lưu trữ dữ liệu real-time</li>
+      <li><strong>Firebase Authentication</strong> - Xác thực người dùng</li>
+      <li><strong>Firebase Cloud Storage</strong> - Lưu trữ file và media</li>
+      <li><strong>Offline Support</strong> - Hoạt động không cần internet</li>
+    </ul>
+
+    <h3>🗺️ Mapping &amp; GIS</h3>
+    <ul>
+      <li><strong>Google Maps API</strong> - Hiển thị bản đồ và marker</li>
+      <li><strong>KML Export</strong> - Định dạng chuẩn cho GIS</li>
+      <li><strong>GPS &amp; Location Services</strong> - Thu thập vị trí chính xác</li>
+    </ul>
+
+    <h3>📊 Data Processing</h3>
+    <ul>
+      <li><strong>Signal Strength Analysis</strong> - Phân tích chất lượng tín hiệu</li>
+      <li><strong>Route Tracking</strong> - Theo dõi tuyến đường</li>
+      <li><strong>Real-time Monitoring</strong> - Giám sát liên tục</li>
+    </ul>
+
+    <h2>📋 Tính Năng Kỹ Thuật</h2>
+
+    <h3>📡 Mạng Di Động Hỗ Trợ</h3>
+    <ul>
+      <li><strong>2G (GSM):</strong> ARFCN, BSIC, Cell ID, LAC</li>
+      <li><strong>3G (WCDMA):</strong> UARFCN, PSC, RNC ID, Cell ID, LAC</li>
+      <li><strong>4G (LTE):</strong> EARFCN, PCI, eNodeB ID, TAC, RSRP, RSRQ, SNR</li>
+      <li><strong>5G (NR):</strong> NRARFCN, PCI, gNodeB ID, NCI, SS-RSRP, SS-RSRQ, SS-SINR</li>
+    </ul>
+
+    <h3>🎨 KML Export Features</h3>
+    <ul>
+      <li><strong>HTML Table Formatting</strong> - Thông tin chi tiết và dễ đọc</li>
+      <li><strong>Dynamic Color Coding</strong> - Màu sắc theo chất lượng tín hiệu</li>
+      <li><strong>Comprehensive Data</strong> - Tất cả thông số mạng có sẵn</li>
+      <li><strong>Professional Styling</strong> - Tương thích Google Earth</li>
+    </ul>
+
+    <h3>🔐 Security &amp; Privacy</h3>
+    <ul>
+      <li><strong>User Authentication</strong> - Đăng nhập an toàn</li>
+      <li><strong>Role-based Access</strong> - Phân quyền chi tiết</li>
+      <li><strong>Data Encryption</strong> - Mã hóa dữ liệu</li>
+      <li><strong>Privacy Protection</strong> - Bảo vệ thông tin cá nhân</li>
+    </ul>
+
+    <h2>🚀 Hướng Phát Triển Tương Lai</h2>
+
+    <h3>🔮 Tính Năng Mới</h3>
+    <ul>
+      <li><strong>AI-powered Analysis</strong> - Phân tích thông minh dựa trên AI</li>
+      <li><strong>Predictive Maintenance</strong> - Dự đoán bảo trì mạng</li>
+      <li><strong>Cloud Dashboard</strong> - Bảng điều khiển web</li>
+      <li><strong>API Integration</strong> - Tích hợp với hệ thống khác</li>
+    </ul>
+
+    <h3>📱 Platform Expansion</h3>
+    <ul>
+      <li><strong>Web Application</strong> - Ứng dụng web responsive</li>
+      <li><strong>Desktop Software</strong> - Phần mềm desktop</li>
+      <li><strong>API Services</strong> - Dịch vụ API cho bên thứ ba</li>
+      <li><strong>IoT Integration</strong> - Tích hợp với thiết bị IoT</li>
+    </ul>
+
+    <h3>🌐 Global Reach</h3>
+    <ul>
+      <li><strong>Multi-language Support</strong> - Hỗ trợ đa ngôn ngữ</li>
+      <li><strong>Regional Compliance</strong> - Tuân thủ quy định địa phương</li>
+      <li><strong>International Standards</strong> - Tiêu chuẩn quốc tế</li>
+      <li><strong>Local Partnerships</strong> - Đối tác địa phương</li>
+    </ul>
+
+    <h2>📞 Liên Hệ &amp; Hỗ Trợ</h2>
+
+    <h3>👥 Đội Ngũ Phát Triển</h3>
+    <ul>
+      <li><strong>Lead Developer:</strong> [Tên Developer]</li>
+      <li><strong>UI/UX Designer:</strong> [Tên Designer]</li>
+      <li><strong>Backend Engineer:</strong> [Tên Engineer]</li>
+      <li><strong>QA Tester:</strong> [Tên Tester]</li>
+    </ul>
+
+    <h3>📧 Thông Tin Liên Lạc</h3>
+    <ul>
+      <li><strong>Email:</strong> <a href="mailto:ebacson@gmail.com">ebacson@gmail.com</a></li>
+      <li><strong>Website:</strong> <a href="https://ebacson.github.io/autocell" target="_blank">https://ebacson.github.io/autocell</a></li>
+  
+    </ul>
+
+    <h3>🔗 Social Media</h3>
+    <ul>
+      
+     
+      <li><strong>Facebook:</strong>https://www.facebook.com/ebacson</li>
+     
+    </ul>
+
+    <h2>📄 License</h2>
+    <p>Dự án AutoCell được phát triển bởi Tạ Bắc Sơn và được bảo vệ bởi bản quyền © 2025. Tất cả quyền được bảo lưu.</p>
+
+    <p><em>AutoCell - Giải pháp toàn diện cho quản lý mạng di động thông minh 🚀</em></p>
+  </main>
+
+  <footer>
+    <p>&copy; 2024 AutoCell. All rights reserved.</p>
+  </footer>
+</body>
+</html>
