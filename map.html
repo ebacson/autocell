@@ -3,142 +3,76 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AutoCell — Hiển thị tất cả KML trong /datakml</title>
+  <title>AutoCell — Hiển thị KML với OpenStreetMap</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
-    html,body,#map{height:100%;margin:0;padding:0}
-    body{font-family:Inter,system-ui,Arial,sans-serif;display:flex;flex-direction:column}
-    #topbar{padding:8px 12px;background:#0b74f4;color:#fff;display:flex;align-items:center;gap:12px}
-    #topbar .title{font-weight:700}
-    #controls{padding:10px;background:#fff;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    #layers{max-height:160px;overflow:auto;padding:6px;border:1px solid #eee;border-radius:6px}
-    #map{flex:1}
-    .layer-item{display:flex;align-items:center;gap:8px;padding:6px;border-bottom:1px solid #f2f2f2}
-    .layer-item:last-child{border-bottom:none}
-    label{font-size:14px}
-    .small{font-size:13px;color:#555}
-    button{padding:6px 10px;border-radius:6px;border:1px solid #ddd;background:#fff;cursor:pointer}
+    html, body { height:100%; margin:0; padding:0; }
+    body { display:flex; flex-direction:column; font-family: Arial, sans-serif; }
+    #map { flex:1; }
+    #topbar { padding:8px 12px; background:#0b74f4; color:#fff; font-weight:bold; }
+    #layers { max-height:200px; overflow:auto; padding:6px; border:1px solid #ddd; background:#fafafa; }
+    .layer-item { margin-bottom:4px; }
   </style>
 </head>
 <body>
-  <div id="topbar">
-    <div class="title">AutoCell — Viewer KML (datakml)</div>
-    <div class="small">Hiện tất cả file .kml trong thư mục <code>/datakml/</code></div>
+  <div id="topbar">AutoCell — Viewer KML (OSM)</div>
+  <div style="display:flex; height:100%">
+    <div style="width:300px; padding:10px; border-right:1px solid #ddd;">
+      <h4>Layers</h4>
+      <div id="layers">(Đang tải...)</div>
+    </div>
+    <div id="map"></div>
   </div>
 
-  <div id="controls">
-    <div>
-      <button id="reloadBtn">Tải lại danh sách KML</button>
-      <button id="fitBtn">Phóng tới tất cả</button>
-    </div>
-    <div style="flex:1"></div>
-    <div id="status" class="small">Trạng thái: <span id="statusText">chưa tải</span></div>
-  </div>
-
-  <div style="display:flex;gap:12px;align-items:stretch">
-    <div style="width:320px;padding:12px;background:#fafafa;border-right:1px solid #eee">
-      <h4 style="margin:0 0 8px">Layers đã tìm</h4>
-      <div id="layers">(Không có layer)</div>
-      <p class="small" style="margin-top:8px">
-        Trang sẽ đọc <code>/datakml/index.json</code> chứa mảng các URL hoặc tên file .kml.<br>
-        Với GitHub Pages, bạn nên tạo <code>datakml/index.json</code> để hiển thị ổn định.
-      </p>
-    </div>
-
-    <div style="flex:1;display:flex;flex-direction:column">
-      <div id="map"></div>
-    </div>
-  </div>
-
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-omnivore/leaflet-omnivore.min.js"></script>
   <script>
-    const GMAPS_API_KEY = 'YOUR_API_KEY_HERE';
+    const map = L.map('map').setView([16, 108], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
     const KML_FOLDER = 'https://ebacson.github.io/autocell/datakml/';
-
+    const layersDiv = document.getElementById('layers');
     const layers = [];
-    let map;
 
-    function setStatus(txt){ document.getElementById('statusText').textContent = txt }
-
-    function initMap(){
-      map = new google.maps.Map(document.getElementById('map'), {
-        center: {lat: 16.0, lng: 108.0},
-        zoom: 6,
-        mapTypeId: 'terrain'
-      });
-      setStatus('đang khởi tạo...');
-      loadKmlList();
-    }
-
-    async function loadKmlList(){
-      setStatus('đang tải index.json...');
-      clearLayers();
-      try{
-        const idxResp = await fetch(KML_FOLDER + 'index.json', {cache: 'no-cache'});
-        if(idxResp.ok){
-          const data = await idxResp.json();
-          const list = Array.isArray(data.files) ? data.files : data;
-          if(Array.isArray(list) && list.length){
-            setStatus('tìm thấy ' + list.length + ' file');
-            list.forEach(name=>{
-              const url = name.startsWith('http') ? name : (KML_FOLDER + name);
-              addKmlLayer(url, name);
-            });
-            renderLayerList();
-            return;
-          }
-        }
-      }catch(e){
-        console.error(e);
-        setStatus('lỗi đọc index.json');
+    async function loadKmlList() {
+      try {
+        const resp = await fetch(KML_FOLDER + 'index.json');
+        if (!resp.ok) throw new Error('Không tìm thấy index.json');
+        const list = await resp.json();
+        layersDiv.innerHTML = '';
+        list.forEach(file => addKmlLayer(file));
+      } catch (e) {
+        layersDiv.innerHTML = 'Lỗi: ' + e.message;
       }
-      renderLayerList();
     }
 
-    function addKmlLayer(url, name){
-      const kml = new google.maps.KmlLayer({
-        url: url,
-        map: map,
-        preserveViewport: true
-      });
-      layers.push({name: name, url: url, kml: kml, visible: true});
+    function addKmlLayer(filename) {
+      const url = KML_FOLDER + filename;
+      const layerGroup = L.layerGroup();
+      const kmlLayer = omnivore.kml(url).on('ready', function() {
+        map.fitBounds(kmlLayer.getBounds());
+      }).addTo(layerGroup);
+
+      layers.push(layerGroup);
+
+      // checkbox UI
+      const div = document.createElement('div');
+      div.className = 'layer-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = true;
+      cb.onchange = () => {
+        if (cb.checked) layerGroup.addTo(map);
+        else map.removeLayer(layerGroup);
+      };
+      div.appendChild(cb);
+      div.appendChild(document.createTextNode(' ' + filename));
+      layersDiv.appendChild(div);
     }
 
-    function clearLayers(){
-      layers.forEach(l=>{ try{ l.kml.setMap(null) }catch(e){} });
-      layers.length = 0;
-      document.getElementById('layers').innerHTML = '(Đang tải...)';
-    }
-
-    function renderLayerList(){
-      const container = document.getElementById('layers');
-      container.innerHTML = '';
-      if(layers.length===0){ container.textContent = '(Không có layer)'; return }
-      layers.forEach((l)=>{
-        const el = document.createElement('div'); el.className='layer-item';
-        const cb = document.createElement('input'); cb.type='checkbox'; cb.checked = l.visible;
-        cb.addEventListener('change', ()=>{
-          l.visible = cb.checked;
-          l.kml.setMap(l.visible ? map : null);
-        });
-        const title = document.createElement('div'); title.style.flex='1'; 
-        title.innerHTML = '<strong>'+escapeHtml(l.name)+'</strong>';
-        el.appendChild(cb); el.appendChild(title);
-        container.appendChild(el);
-      });
-      setStatus('đã tải ' + layers.length + ' layer');
-    }
-
-    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
-
-    document.getElementById('reloadBtn').addEventListener('click', ()=> loadKmlList());
-    document.getElementById('fitBtn').addEventListener('click', ()=> map.fitBounds(new google.maps.LatLngBounds())); // bạn có thể cải tiến sau
-
-    function loadGoogleMaps(){
-      const s = document.createElement('script');
-      s.src = 'https://maps.googleapis.com/maps/api/js?key='+GMAPS_API_KEY+'&callback=initMap';
-      s.async = true; s.defer = true;
-      document.head.appendChild(s);
-    }
-    loadGoogleMaps();
+    loadKmlList();
   </script>
 </body>
 </html>
