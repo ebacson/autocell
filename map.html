@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AutoCell — Hiển thị tất cả KML trong /datakml</title>
+  <style>
+    html,body,#map{height:100%;margin:0;padding:0}
+    body{font-family:Inter,system-ui,Arial,sans-serif;display:flex;flex-direction:column}
+    #topbar{padding:8px 12px;background:#0b74f4;color:#fff;display:flex;align-items:center;gap:12px}
+    #topbar .title{font-weight:700}
+    #controls{padding:10px;background:#fff;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    #layers{max-height:160px;overflow:auto;padding:6px;border:1px solid #eee;border-radius:6px}
+    #map{flex:1}
+    .layer-item{display:flex;align-items:center;gap:8px;padding:6px;border-bottom:1px solid #f2f2f2}
+    .layer-item:last-child{border-bottom:none}
+    label{font-size:14px}
+    .small{font-size:13px;color:#555}
+    button{padding:6px 10px;border-radius:6px;border:1px solid #ddd;background:#fff;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div id="topbar">
+    <div class="title">AutoCell — Viewer KML (datakml)</div>
+    <div class="small">Hiện tất cả file .kml trong thư mục <code>/datakml/</code></div>
+  </div>
+
+  <div id="controls">
+    <div>
+      <button id="reloadBtn">Tải lại danh sách KML</button>
+      <button id="fitBtn">Phóng tới tất cả</button>
+    </div>
+    <div style="flex:1"></div>
+    <div id="status" class="small">Trạng thái: <span id="statusText">chưa tải</span></div>
+  </div>
+
+  <div style="display:flex;gap:12px;align-items:stretch">
+    <div style="width:320px;padding:12px;background:#fafafa;border-right:1px solid #eee">
+      <h4 style="margin:0 0 8px">Layers đã tìm</h4>
+      <div id="layers">(Không có layer)</div>
+      <p class="small" style="margin-top:8px">Ghi chú: Trang sẽ cố gắng đọc <code>/datakml/index.json</code> nếu có (một mảng tên file .kml). Nếu không, sẽ thử lấy danh mục HTTP của /datakml/ và tìm liên kết tới .kml. Với hosting tĩnh (GitHub Pages) bạn nên tạo sẵn <code>datakml/index.json</code> chứa danh sách file để hiển thị ổn định.</p>
+    </div>
+
+    <div style="flex:1;display:flex;flex-direction:column">
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <script>
+    // === cấu hình ===
+    // Thay CHỈNH CHÌA KHÓA API ở dưới bằng key Google Maps của bạn
+    const GMAPS_API_KEY = 'REPLACE_WITH_YOUR_GOOGLE_MAPS_API_KEY';
+    const KML_FOLDER = 'datakml/'; // tương đối so với file map.html
+
+    // trạng thái
+    const layers = [];
+    let map;
+    let globalBounds;
+
+    function setStatus(txt){ document.getElementById('statusText').textContent = txt }
+
+    function initMap(){
+      // mặc định bản đồ tập trung Vietnam
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: {lat: 16.0, lng: 108.0},
+        zoom: 6,
+        mapTypeId: 'terrain'
+      });
+      globalBounds = new google.maps.LatLngBounds();
+      setStatus('đang khởi tạo...');
+      loadKmlList();
+    }
+
+    async function loadKmlList(){
+      setStatus('đang tìm file .kml trong ' + KML_FOLDER);
+      clearLayers();
+      // 1) Thử index.json (mảng tên file)
+      try{
+        const idxResp = await fetch(KML_FOLDER + 'index.json', {cache: 'no-cache'});
+        if(idxResp.ok){
+          const list = await idxResp.json();
+          if(Array.isArray(list) && list.length){
+            setStatus('tìm thấy ' + list.length + ' file trong index.json');
+            list.forEach(name=> addKmlLayer(KML_FOLDER + name, name));
+            renderLayerList();
+            return;
+          }
+        }
+      }catch(e){ /* không có index.json hoặc lỗi */ }
+
+      // 2) Thử lấy directory listing HTML và parse các <a href="...kml">
+      try{
+        const dirResp = await fetch(KML_FOLDER, {cache:'no-cache'});
+        if(dirResp.ok){
+          const text = await dirResp.text();
+          // parse hrefs
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(text, 'text/html');
+          const anchors = Array.from(doc.querySelectorAll('a'));
+          const kmlFiles = anchors.map(a=>a.getAttribute('href')).filter(h=>h && h.toLowerCase().endsWith('.kml'));
+          // make unique and relative
+          const unique = [...new Set(kmlFiles)];
+          if(unique.length){
+            setStatus('tìm thấy ' + unique.length + ' file .kml trong listing thư mục');
+            unique.forEach(fn=>{
+              // nếu href là đường dẫn đầy đủ thì giữ nguyên, nếu là tên file thì tiền tố folder
+              const url = fn.startsWith('http') ? fn : (KML_FOLDER + fn);
+              addKmlLayer(url, fn);
+            });
+            renderLayerList();
+            return;
+          }
+        }
+      }catch(e){ /* ignore */ }
+
+      // 3) fallback: thử tự động quét tên file theo mẫu (nếu bạn biết convention)
+      // (không bắt buộc) — ở đây không làm gì thêm
+      setStatus('không tìm thấy file .kml tự động. Hãy tạo datakml/index.json chứa mảng tên file .kml hoặc bật directory listing trên server.');
+      renderLayerList();
+    }
+
+    function addKmlLayer(url, name){
+      const kml = new google.maps.KmlLayer({
+        url: location.origin + '/' + url.replace(/^\/+/, ''),
+        preserveViewport: true,
+        suppressInfoWindows: false
+      });
+      kml.setMap(map);
+      layers.push({name: name, url: url, kml: kml, visible: true, opacity: 1});
+      // Note: KmlLayer của Google Maps không hỗ trợ setOpacity trực tiếp.
+      // Nếu cần opacity, bạn phải convert KML sang GeoJSON và vẽ bằng Data layer.
+    }
+
+    function clearLayers(){
+      layers.forEach(l=>{ try{ l.kml.setMap(null) }catch(e){} });
+      layers.length = 0;
+      globalBounds = new google.maps.LatLngBounds();
+      document.getElementById('layers').innerHTML = '(Đang tải...)';
+    }
+
+    function renderLayerList(){
+      const container = document.getElementById('layers');
+      container.innerHTML = '';
+      if(layers.length===0){ container.textContent = '(Không có layer)'; return }
+      layers.forEach((l, idx)=>{
+        const el = document.createElement('div'); el.className='layer-item';
+        const cb = document.createElement('input'); cb.type='checkbox'; cb.checked = l.visible;
+        cb.addEventListener('change', ()=>{
+          l.visible = cb.checked;
+          l.kml.setMap(l.visible ? map : null);
+        });
+        const title = document.createElement('div'); title.style.flex='1'; title.innerHTML = '<strong>'+escapeHtml(l.name)+'</strong><div class="small">'+escapeHtml(l.url)+'</div>';
+        const btnZoom = document.createElement('button'); btnZoom.textContent='Zoom'; btnZoom.addEventListener('click', ()=>zoomToKml(l));
+        el.appendChild(cb); el.appendChild(title); el.appendChild(btnZoom);
+        container.appendChild(el);
+      });
+      setStatus('đã tải ' + layers.length + ' layer');
+    }
+
+    function zoomToKml(layerObj){
+      // Không có bounding box trực tiếp từ KmlLayer client-side.
+      // Thay vào đó ta có thể request file KML và parse <coordinates> để build bounds.
+      fetch(layerObj.url).then(r=>r.text()).then(txt=>{
+        const coords = Array.from(txt.matchAll(/<coordinates>([\s\S]*?)<\/coordinates>/gi)).map(m=>m[1].trim());
+        const points = [];
+        coords.forEach(block=>{
+          block.split(/\s+/).forEach(pair=>{
+            const p = pair.split(',').map(Number);
+            if(p.length>=2 && !isNaN(p[0]) && !isNaN(p[1])) points.push({lng:p[0], lat:p[1]});
+          });
+        });
+        if(points.length){
+          const b = new google.maps.LatLngBounds();
+          points.forEach(pt=> b.extend(pt));
+          map.fitBounds(b);
+        }else{
+          alert('Không thể lấy bounds từ file KML này.');
+        }
+      }).catch(err=>{
+        alert('Lỗi khi tải KML để zoom: ' + err);
+      });
+    }
+
+    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+    // fit to all layers: try to parse all KMLs and compute bounds
+    async function fitAll(){
+      const allPoints = [];
+      for(const l of layers){
+        try{
+          const txt = await (await fetch(l.url)).text();
+          const coords = Array.from(txt.matchAll(/<coordinates>([\s\S]*?)<\/coordinates>/gi)).map(m=>m[1].trim());
+          coords.forEach(block=>{
+            block.split(/\s+/).forEach(pair=>{
+              const p = pair.split(',').map(Number);
+              if(p.length>=2 && !isNaN(p[0]) && !isNaN(p[1])) allPoints.push({lng:p[0], lat:p[1]});
+            });
+          });
+        }catch(e){ console.warn('Không thể đọc KML', l.url, e) }
+      }
+      if(allPoints.length){
+        const b = new google.maps.LatLngBounds(); allPoints.forEach(pt=> b.extend(pt)); map.fitBounds(b);
+      } else alert('Không tìm thấy toạ độ trong các file KML để phóng tới.');
+    }
+
+    document.getElementById('reloadBtn').addEventListener('click', ()=> loadKmlList());
+    document.getElementById('fitBtn').addEventListener('click', ()=> fitAll());
+
+    // === tải Google Maps async ===
+    function loadGoogleMaps(){
+      const s = document.createElement('script');
+      s.src = 'https://maps.googleapis.com/maps/api/js?key='+GMAPS_API_KEY+'&callback=initMap';
+      s.async = true; s.defer = true;
+      document.head.appendChild(s);
+    }
+
+    // Nếu key chưa đổi thì cảnh báo user
+    if(GMAPS_API_KEY === 'REPLACE_WITH_YOUR_GOOGLE_MAPS_API_KEY'){
+      setStatus('Chưa cài API KEY Google Maps. Vui lòng chỉnh GMAPS_API_KEY trong file.');
+      // vẫn load script (sẽ báo lỗi) để dev biết
+    }
+    loadGoogleMaps();
+  </script>
+</body>
+</html>
