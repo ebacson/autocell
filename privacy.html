@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chính sách bảo mật - autoCell</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        
+        .header .subtitle {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        h2 {
+            color: #2E7D32;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+            margin-top: 30px;
+            font-size: 20px;
+        }
+        
+        h3 {
+            color: #388E3C;
+            margin-top: 25px;
+            font-size: 18px;
+        }
+        
+        p {
+            margin: 15px 0;
+            color: #333;
+            text-align: justify;
+        }
+        
+        ul {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+        
+        li {
+            margin: 8px 0;
+            color: #333;
+        }
+        
+        .highlight {
+            background: #E8F5E8;
+            padding: 15px;
+            border-left: 4px solid #4CAF50;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .contact-info {
+            background: #F3E5F5;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #9C27B0;
+        }
+        
+        .footer {
+            background: #f5f5f5;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+        
+        .version {
+            background: #E3F2FD;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+            color: #1976D2;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            h2 {
+                font-size: 18px;
+            }
+            
+            h3 {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CHÍNH SÁCH BẢO MẬT VÀ QUYỀN RIÊNG TƯ</h1>
+            <div class="subtitle">Ứng dụng autoCell</div>
+        </div>
+        
+        <div class="content">
+            <div class="version">
+                Phiên bản: 1.0 | Ngày cập nhật: 30 tháng 7, 2025<br>
+                Nhà phát triển: TA BAC SON
+            </div>
+
+            <h2>1. THÔNG TIN CHÚNG TÔI THU THẬP</h2>
+            
+            <h3>1.1 Thông tin cá nhân</h3>
+            <p>Email bạn cung cấp khi tạo tài khoản AutoCell, được sử dụng để xác minh danh tính, liên hệ với bạn khi cần thiết.</p>
+            <p><strong>Device ID:</strong> Dùng để quản lý phiên đăng nhập (session).</p>
+            
+            <h3>1.2 Thông tin vị trí</h3>
+            <ul>
+                <li><strong>Tọa độ GPS:</strong> Lấy latitude và longitude để xác định vị trí hiện tại.</li>
+                <li><strong>Quyền truy cập vị trí liên tục:</strong> Hỗ trợ tìm kiếm cell theo thời gian thực.</li>
+                <li><strong>Lịch sử vị trí:</strong> Lưu trữ tạm thời để tính toán khoảng cách đến cell.</li>
+            </ul>
+            
+            <h3>1.3 Dữ liệu kỹ thuật</h3>
+            <ul>
+                <li><strong>Thông tin thiết bị:</strong> Device ID, phiên bản iOS để tối ưu hóa ứng dụng.</li>
+                <li><strong>Log hoạt động:</strong> Ghi lại hành động người dùng để hỗ trợ debug và cải thiện hiệu suất.</li>
+                <li><strong>Dữ liệu cell:</strong> Thông tin từ file .txt (tên cell, tọa độ, LAC, CellID, azimuth, tilt, height, công nghệ 2G/3G/4G).</li>
+            </ul>
+
+            <h2>2. MỤC ĐÍCH SỬ DỤNG THÔNG TIN</h2>
+            
+            <h3>2.1 Chức năng chính</h3>
+            <ul>
+                <li>Hiển thị thông tin cells gần nhất dựa trên vị trí hiện tại.</li>
+                <li>Xem thông tin từ các thiết bị đo gửi về theo thời gian thực</li>
+                <li>Quản lý và nhập dữ liệu cell từ file .txt.</li>
+            </ul>
+            
+            <h3>2.2 Phân tích và cải thiện</h3>
+            <ul>
+                <li>Thống kê sử dụng ứng dụng để tối ưu hóa hiệu suất.</li>
+                <li>Phát hiện và khắc phục lỗi.</li>
+                <li>Phát triển và cải tiến tính năng mới.</li>
+            </ul>
+
+            <h2>3. CHIA SẺ THÔNG TIN</h2>
+            
+            <h3>3.1 Thông tin chúng tôi KHÔNG chia sẻ</h3>
+            <div class="highlight">
+                <ul>
+                    <li>Thông tin cá nhân (tài khoản, số điện thoại).</li>
+                    <li>Dữ liệu vị trí chi tiết của người dùng.</li>
+                    <li>Thông tin đăng nhập hoặc session.</li>
+                </ul>
+            </div>
+            
+            <h3>3.2 Thông tin chúng tôi có thể chia sẻ</h3>
+            <ul>
+                <li><strong>Dữ liệu tổng hợp:</strong> Thông tin không định danh để phân tích xu hướng.</li>
+                <li><strong>Yêu cầu pháp lý:</strong> Tuân thủ quy định pháp luật hoặc cơ quan có thẩm quyền.</li>
+                <li><strong>Đồng ý của người dùng:</strong> Chỉ chia sẻ khi có sự đồng ý rõ ràng từ bạn.</li>
+            </ul>
+
+            <h2>4. LƯU TRỮ VÀ BẢO MẬT</h2>
+            
+            <h3>4.1 Nơi lưu trữ</h3>
+            <ul>
+                <li><strong>Firebase Realtime Database:</strong> Lưu trữ thông tin đăng nhập và dữ liệu cell.</li>
+                <li><strong>UserDefaults (iOS):</strong> Lưu tạm thông tin đăng nhập trên thiết bị.</li>
+                <li><strong>Cache trên thiết bị:</strong> Lưu trữ dữ liệu tạm thời để tăng tốc độ truy cập.</li>
+            </ul>
+            
+            <h3>4.2 Thời gian lưu trữ</h3>
+            <ul>
+                <li><strong>Session đăng nhập:</strong> Hết hạn sau 7 ngày nếu không hoạt động.</li>
+                <li><strong>Dữ liệu cell:</strong> Lưu trữ vĩnh viễn cho đến khi người dùng xóa.</li>
+                <li><strong>Cache:</strong> Tự động xóa khi không cần thiết hoặc khi bộ nhớ đầy.</li>
+            </ul>
+            
+            <h3>4.3 Biện pháp bảo mật</h3>
+            <ul>
+                <li>Mã hóa dữ liệu trong quá trình truyền tải (HTTPS).</li>
+                <li>Kiểm soát truy cập dựa trên vai trò (admin/support/user thường).</li>
+                <li>Xác thực hai bước (username/password).</li>
+            </ul>
+
+            <h2>5. QUYỀN CỦA NGƯỜI DÙNG</h2>
+            
+            <h3>5.1 Quyền của bạn</h3>
+            <ul>
+                <li>Xem và truy cập thông tin cá nhân.</li>
+                <li>Yêu cầu chỉnh sửa hoặc xóa dữ liệu cá nhân.</li>
+                <li>Từ chối cung cấp thông tin vị trí.</li>
+                <li>Hủy tài khoản và xóa toàn bộ dữ liệu.</li>
+            </ul>
+            
+            <h3>5.2 Cách thực hiện</h3>
+            <ul>
+                <li><strong>Liên hệ:</strong> Gửi email đến ebacson@gmail.com</li>
+                <li><strong>Trong ứng dụng:</strong> Vào Cài đặt > Đăng xuất. Dữ liệu sẽ bị xóa hoàn toàn sau 24h nếu không đăng nhập trở lại.</li>
+                <li><strong>Xóa ứng dụng:</strong> Dữ liệu trên thiết bị sẽ tự động bị xóa.</li>
+            </ul>
+
+            <h2>6. QUYỀN TRUY CẬP VỊ TRÍ</h2>
+            
+            <h3>6.1 Mục đích sử dụng</h3>
+            <ul>
+                <li>Xác định vị trí để tìm kiếm cell gần nhất trong bán kính tùy chỉnh.</li>
+                <li>Tính toán khoảng cách chính xác đến cell.</li>
+                <li>Cập nhật thông tin cell theo thời gian thực.</li>
+            </ul>
+            
+            <h3>6.2 Quản lý quyền vị trí</h3>
+            <ul>
+                <li>Vào Cài đặt iOS > Quyền riêng tư > Dịch vụ định vị > autoCell.</li>
+                <li>Chọn "Khi dùng ứng dụng" hoặc "Không bao giờ".</li>
+                <li>Có thể thay đổi tùy chọn bất kỳ lúc nào.</li>
+            </ul>
+
+            <h2>7. COOKIES VÀ CÔNG NGHỆ THEO DÕI</h2>
+            
+            <h3>7.1 Công nghệ sử dụng</h3>
+            <ul>
+                <li><strong>Session cookies:</strong> Duy trì trạng thái đăng nhập.</li>
+                <li><strong>Analytics:</strong> Thu thập dữ liệu sử dụng để cải thiện ứng dụng.</li>
+                <li>Không sử dụng tracking cookies hoặc quảng cáo cá nhân hóa.</li>
+            </ul>
+            
+            <h3>7.2 Quản lý cookies</h3>
+            <ul>
+                <li>Cookies tự động xóa khi đăng xuất.</li>
+                <li>Không theo dõi hành vi người dùng ngoài ứng dụng.</li>
+            </ul>
+
+            <h2>8. CẬP NHẬT CHÍNH SÁCH</h2>
+            
+            <h3>8.1 Khi nào cập nhật</h3>
+            <ul>
+                <li>Khi thêm tính năng mới hoặc thay đổi cách thu thập dữ liệu.</li>
+                <li>Khi có yêu cầu pháp lý mới.</li>
+                <li>Khi cải thiện chính sách bảo mật.</li>
+            </ul>
+            
+            <h3>8.2 Cách thông báo</h3>
+            <ul>
+                <li>Cập nhật thông báo trong ứng dụng.</li>
+                <li>Gửi email thông báo (nếu bạn cung cấp email).</li>
+                <li>Cập nhật ngày hiệu lực trên chính sách.</li>
+            </ul>
+
+            <h2>9. LIÊN HỆ</h2>
+            
+            <div class="contact-info">
+                <h3>9.1 Thông tin liên hệ</h3>
+                <p><strong>Email:</strong> ebacson@gmail.com</p>
+                <p><strong>Điện thoại:</strong> 0913485889</p>
+                
+                <h3>9.2 Khiếu nại</h3>
+                <ul>
+                    <li>Gửi email khiếu nại đến ebacson@gmail.com.</li>
+                    <li><strong>Thời gian phản hồi:</strong> Trong vòng 48 giờ.</li>
+                    <li><strong>Giải quyết khiếu nại:</strong> Trong vòng 30 ngày.</li>
+                </ul>
+            </div>
+
+            <h2>10. ĐIỀU KHOẢN PHÁP LÝ</h2>
+            
+            <h3>10.1 Luật áp dụng</h3>
+            <ul>
+                <li>Tuân thủ Luật Bảo vệ dữ liệu cá nhân Việt Nam.</li>
+                <li>Tuân thủ GDPR cho người dùng tại Liên minh Châu Âu (nếu có).</li>
+                <li>Tuân thủ Quy định App Store của Apple.</li>
+            </ul>
+            
+            <h3>10.2 Giải quyết tranh chấp</h3>
+            <ul>
+                <li>Ưu tiên giải quyết qua thương lượng.</li>
+                <li>Nếu không đạt thỏa thuận, sử dụng trọng tài thương mại.</li>
+                <li>Tòa án có thẩm quyền tại Việt Nam sẽ xử lý các tranh chấp.</li>
+            </ul>
+
+            <h2>11. ĐỒNG Ý VÀ SỬ DỤNG</h2>
+            <div class="highlight">
+                <p>Bằng cách sử dụng autoCell, bạn đồng ý:</p>
+                <ul>
+                    <li>Cho phép thu thập và sử dụng thông tin theo chính sách này.</li>
+                    <li>Chấp nhận các cập nhật chính sách trong tương lai.</li>
+                    <li>Tuân thủ các quy định pháp lý hiện hành.</li>
+                </ul>
+                <p><strong>Nếu bạn không đồng ý, vui lòng không sử dụng ứng dụng.</strong></p>
+            </div>
+
+            <h2>12. THÔNG TIN BỔ SUNG</h2>
+            
+            <h3>12.1 Dành cho trẻ em</h3>
+            <ul>
+                <li>Ứng dụng không dành cho trẻ em dưới 13 tuổi.</li>
+                <li>Không thu thập thông tin từ trẻ em.</li>
+                <li>Nếu phát hiện dữ liệu của trẻ em, chúng tôi sẽ xóa ngay lập tức.</li>
+            </ul>
+            
+            <h3>12.2 Dành cho người dùng quốc tế</h3>
+            <ul>
+                <li>Tuân thủ luật pháp địa phương tại quốc gia của bạn.</li>
+                <li>Đảm bảo truyền tải dữ liệu an toàn qua HTTPS.</li>
+                <li>Bảo vệ quyền riêng tư theo tiêu chuẩn toàn cầu.</li>
+            </ul>
+
+            <div class="highlight">
+                <p><strong>Chính sách này có hiệu lực từ ngày 30 tháng 7, 2025 và sẽ được cập nhật khi cần thiết.</strong></p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2025 autoCell - Tất cả quyền được bảo lưu</p>
+            <p>Phiên bản 1.0 | Cập nhật lần cuối: 30/07/2025</p>
+        </div>
+    </div>
+</body>
+</html>
