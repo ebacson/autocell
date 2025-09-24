@@ -32,6 +32,8 @@
   <script>
     let data = [];
     let cols = [];
+    let colSerial = "Serial Number";
+    let colLabel = "User Label";
 
     // Load file Excel trong thư mục gốc
     fetch("inventory.xlsx")
@@ -41,8 +43,17 @@
         const ws = wb.Sheets[wb.SheetNames[0]];
         data = XLSX.utils.sheet_to_json(ws, {defval: ""});
         cols = Object.keys(data[0] || {});
+
+        // dò tên cột thực tế
+        cols.forEach(c => {
+          let lc = c.trim().toLowerCase();
+          if (lc.includes("serial")) colSerial = c;
+          if (lc.includes("user") && lc.includes("label")) colLabel = c;
+        });
+
         document.getElementById("result").innerHTML =
-          `<p>Đã tải ${data.length} bản ghi từ <b>inventory.xlsx</b></p>`;
+          `<p>Đã tải ${data.length} bản ghi từ <b>inventory.xlsx</b></p>
+           <p>Cột Serial: <b>${colSerial}</b>, Cột User Label: <b>${colLabel}</b></p>`;
       });
 
     function renderTable(records) {
@@ -66,8 +77,8 @@
       const serial = document.getElementById('searchSerial').value.trim().toLowerCase();
       const label = document.getElementById('searchLabel').value.trim().toLowerCase();
       const filtered = data.filter(r => {
-        let matchSerial = serial === "" || (r["Serial Number"] || "").toLowerCase() === serial; // chính xác
-        let matchLabel = label === "" || (r["User Label"] || "").toLowerCase().includes(label); // chứa
+        let matchSerial = serial === "" || (String(r[colSerial] || "").trim().toLowerCase() === serial); // chính xác
+        let matchLabel = label === "" || (String(r[colLabel] || "").trim().toLowerCase().includes(label)); // chứa
         return matchSerial && matchLabel;
       });
       renderTable(filtered);
@@ -81,8 +92,8 @@
       const serial = document.getElementById('searchSerial').value.trim().toLowerCase();
       const label = document.getElementById('searchLabel').value.trim().toLowerCase();
       const filtered = data.filter(r => {
-        let matchSerial = serial === "" || (r["Serial Number"] || "").toLowerCase() === serial;
-        let matchLabel = label === "" || (r["User Label"] || "").toLowerCase().includes(label);
+        let matchSerial = serial === "" || (String(r[colSerial] || "").trim().toLowerCase() === serial);
+        let matchLabel = label === "" || (String(r[colLabel] || "").trim().toLowerCase().includes(label));
         return matchSerial && matchLabel;
       });
       if (filtered.length === 0) {
