@@ -5,25 +5,28 @@
   <title>Tra cứu thiết bị</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h1 { color: #2c3e50; }
-    input { padding: 6px; margin: 4px; width: 250px; }
-    button { padding: 6px 12px; margin: 4px; }
-    table { border-collapse: collapse; margin-top: 20px; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
-    th { background: #f8f8f8; }
+    body { font-family: Arial, sans-serif; margin: 10px; }
+    h1 { color: #2c3e50; font-size: 20px; text-align: center; }
+    .controls { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+    input, button { padding: 10px; font-size: 16px; width: 100%; box-sizing: border-box; }
+    button { background: #3498db; color: #fff; border: none; border-radius: 4px; }
+    button:hover { background: #2980b9; cursor: pointer; }
+    .table-container { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; min-width: 600px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; font-size: 14px; }
+    th { background: #f8f8f8; position: sticky; top: 0; }
     tr:nth-child(even) { background: #f2f2f2; }
   </style>
 </head>
 <body>
   <h1>Tra cứu thiết bị</h1>
-  <p>
-    <input type="text" id="searchSerial" placeholder="Nhập Serial Number...">
-    <input type="text" id="searchLabel" placeholder="Nhập User Label...">
-    <button onclick="search()">Tìm</button>
-    <button onclick="showAll()">Hiện tất cả</button>
-    <button onclick="downloadCSV()">Tải kết quả (CSV)</button>
-  </p>
+  <div class="controls">
+    <input type="text" id="searchSerial" placeholder="Nhập Serial Number (chính xác)">
+    <input type="text" id="searchLabel" placeholder="Nhập User Label (một phần)">
+    <button onclick="search()">🔍 Tìm</button>
+    <button onclick="showAll()">📋 Hiện tất cả</button>
+    <button onclick="downloadCSV()">⬇️ Tải kết quả (CSV)</button>
+  </div>
   <div id="result"></div>
 
   <script>
@@ -39,7 +42,7 @@
         data = XLSX.utils.sheet_to_json(ws, {defval: ""});
         cols = Object.keys(data[0] || {});
         document.getElementById("result").innerHTML =
-          `<p>Đã tải ${data.length} bản ghi từ inventory.xlsx</p>`;
+          `<p>Đã tải ${data.length} bản ghi từ <b>inventory.xlsx</b></p>`;
       });
 
     function renderTable(records) {
@@ -47,7 +50,7 @@
         document.getElementById('result').innerHTML = "<p><b>Không tìm thấy kết quả</b></p>";
         return;
       }
-      let html = "<table><thead><tr>";
+      let html = '<div class="table-container"><table><thead><tr>';
       cols.forEach(c => html += "<th>" + c + "</th>");
       html += "</tr></thead><tbody>";
       records.forEach(r => {
@@ -55,30 +58,30 @@
         cols.forEach(c => html += "<td>" + (r[c] || '') + "</td>");
         html += "</tr>";
       });
-      html += "</tbody></table>";
+      html += "</tbody></table></div>";
       document.getElementById('result').innerHTML = html;
     }
 
     function search() {
-      const serial = document.getElementById('searchSerial').value.toLowerCase();
-      const label = document.getElementById('searchLabel').value.toLowerCase();
+      const serial = document.getElementById('searchSerial').value.trim().toLowerCase();
+      const label = document.getElementById('searchLabel').value.trim().toLowerCase();
       const filtered = data.filter(r => {
-        let matchSerial = serial === "" || (r["Serial Number"] || "").toLowerCase().includes(serial);
-        let matchLabel = label === "" || (r["User Label"] || "").toLowerCase().includes(label);
+        let matchSerial = serial === "" || (r["Serial Number"] || "").toLowerCase() === serial; // chính xác
+        let matchLabel = label === "" || (r["User Label"] || "").toLowerCase().includes(label); // chứa
         return matchSerial && matchLabel;
       });
       renderTable(filtered);
     }
 
     function showAll() {
-      renderTable(data.slice(0, 200)); // Giới hạn 200 dòng để hiển thị
+      renderTable(data.slice(0, 200)); // Giới hạn 200 dòng
     }
 
     function downloadCSV() {
-      const serial = document.getElementById('searchSerial').value.toLowerCase();
-      const label = document.getElementById('searchLabel').value.toLowerCase();
+      const serial = document.getElementById('searchSerial').value.trim().toLowerCase();
+      const label = document.getElementById('searchLabel').value.trim().toLowerCase();
       const filtered = data.filter(r => {
-        let matchSerial = serial === "" || (r["Serial Number"] || "").toLowerCase().includes(serial);
+        let matchSerial = serial === "" || (r["Serial Number"] || "").toLowerCase() === serial;
         let matchLabel = label === "" || (r["User Label"] || "").toLowerCase().includes(label);
         return matchSerial && matchLabel;
       });
