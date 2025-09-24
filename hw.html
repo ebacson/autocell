@@ -1,119 +1,82 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <title>Tra cứu thiết bị</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 10px; }
-    h1 { color: #2c3e50; font-size: 20px; text-align: center; }
-    .controls { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-    input, button { padding: 10px; font-size: 16px; width: 100%; box-sizing: border-box; }
-    button { background: #3498db; color: #fff; border: none; border-radius: 4px; }
-    button:hover { background: #2980b9; cursor: pointer; }
-    .table-container { overflow-x: auto; }
-    table { border-collapse: collapse; width: 100%; min-width: 600px; }
+    body { font-family: Arial, sans-serif; padding: 10px; }
+    input, button { margin: 5px 0; padding: 8px; width: 100%; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: left; font-size: 14px; }
-    th { background: #f8f8f8; position: sticky; top: 0; }
-    tr:nth-child(even) { background: #f2f2f2; }
+    tr:nth-child(even) { background: #f9f9f9; }
   </style>
 </head>
 <body>
-  <h1>Tra cứu thiết bị</h1>
-  <div class="controls">
-    <input type="text" id="searchSerial" placeholder="Nhập Serial Number (chính xác)">
-    <input type="text" id="searchLabel" placeholder="Nhập User Label (một phần)">
-    <button onclick="search()">🔍 Tìm</button>
-    <button onclick="showAll()">📋 Hiện tất cả</button>
-    <button onclick="downloadCSV()">⬇️ Tải kết quả (CSV)</button>
-  </div>
+  <h2>🔍 Tra cứu thiết bị</h2>
+  <input id="serialInput" placeholder="Nhập Serial Number (tìm chính xác)">
+  <button onclick="searchSerial()">Tìm theo Serial</button>
+  
+  <input id="userInput" placeholder="Nhập User Label (tìm gần đúng)">
+  <button onclick="searchUser()">Tìm theo User Label</button>
+
+  <button onclick="showAll()">Hiện tất cả</button>
+
   <div id="result"></div>
 
   <script>
     let data = [];
-    let cols = [];
-    let colSerial = "Serial Number";
-    let colLabel = "User Label";
 
-    // Load file Excel trong thư mục gốc
-    fetch("inventory.xlsx")
-      .then(res => res.arrayBuffer())
-      .then(ab => {
-        const wb = XLSX.read(ab, {type: "array"});
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        data = XLSX.utils.sheet_to_json(ws, {defval: ""});
-        cols = Object.keys(data[0] || {});
+    async function loadData() {
+      try {
+        const response = await fetch("inventory.xlsx");
+        if (!response.ok) throw new Error("Không tìm thấy file inventory.xlsx");
 
-        // dò tên cột thực tế
-        cols.forEach(c => {
-          let lc = c.trim().toLowerCase();
-          if (lc.includes("serial")) colSerial = c;
-          if (lc.includes("user") && lc.includes("label")) colLabel = c;
-        });
+        const buf = await response.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        data = XLSX.utils.sheet_to_json(sheet);
 
-        document.getElementById("result").innerHTML =
-          `<p>Đã tải ${data.length} bản ghi từ <b>inventory.xlsx</b></p>
-           <p>Cột Serial: <b>${colSerial}</b>, Cột User Label: <b>${colLabel}</b></p>`;
-      });
-
-    function renderTable(records) {
-      if (records.length === 0) {
-        document.getElementById('result').innerHTML = "<p><b>Không tìm thấy kết quả</b></p>";
-        return;
+        alert("✅ Đã tải thành công dữ liệu, có " + data.length + " bản ghi");
+      } catch (e) {
+        alert("❌ Lỗi: " + e.message);
       }
-      let html = '<div class="table-container"><table><thead><tr>';
-      cols.forEach(c => html += "<th>" + c + "</th>");
-      html += "</tr></thead><tbody>";
-      records.forEach(r => {
-        html += "<tr>";
-        cols.forEach(c => html += "<td>" + (r[c] || '') + "</td>");
-        html += "</tr>";
-      });
-      html += "</tbody></table></div>";
-      document.getElementById('result').innerHTML = html;
     }
 
-    function search() {
-      const serial = document.getElementById('searchSerial').value.trim().toLowerCase();
-      const label = document.getElementById('searchLabel').value.trim().toLowerCase();
-      const filtered = data.filter(r => {
-        let matchSerial = serial === "" || (String(r[colSerial] || "").trim().toLowerCase() === serial); // chính xác
-        let matchLabel = label === "" || (String(r[colLabel] || "").trim().toLowerCase().includes(label)); // chứa
-        return matchSerial && matchLabel;
+    function renderTable(rows) {
+      if (!rows.length) {
+        document.getElementById("result").innerHTML = "<p>Không tìm thấy dữ liệu</p>";
+        return;
+      }
+      let table = "<table><tr>";
+      Object.keys(rows[0]).forEach(k => table += `<th>${k}</th>`);
+      table += "</tr>";
+      rows.forEach(r => {
+        table += "<tr>";
+        Object.values(r).forEach(v => table += `<td>${v ?? ""}</td>`);
+        table += "</tr>";
       });
-      renderTable(filtered);
+      table += "</table>";
+      document.getElementById("result").innerHTML = table;
+    }
+
+    function searchSerial() {
+      const val = document.getElementById("serialInput").value.trim();
+      const result = data.filter(r => String(r["Serial Number"]) === val);
+      renderTable(result);
+    }
+
+    function searchUser() {
+      const val = document.getElementById("userInput").value.trim().toLowerCase();
+      const result = data.filter(r => String(r["User Label"] || "").toLowerCase().includes(val));
+      renderTable(result);
     }
 
     function showAll() {
-      renderTable(data.slice(0, 200)); // Giới hạn 200 dòng
+      renderTable(data.slice(0, 200)); // giới hạn 200 dòng cho nhẹ
     }
 
-    function downloadCSV() {
-      const serial = document.getElementById('searchSerial').value.trim().toLowerCase();
-      const label = document.getElementById('searchLabel').value.trim().toLowerCase();
-      const filtered = data.filter(r => {
-        let matchSerial = serial === "" || (String(r[colSerial] || "").trim().toLowerCase() === serial);
-        let matchLabel = label === "" || (String(r[colLabel] || "").trim().toLowerCase().includes(label));
-        return matchSerial && matchLabel;
-      });
-      if (filtered.length === 0) {
-        alert("Không có dữ liệu để tải.");
-        return;
-      }
-      let csv = cols.join(",") + "\n";
-      filtered.forEach(r => {
-        let row = cols.map(c => `"${(r[c] || '').toString().replace(/"/g,'""')}"`).join(",");
-        csv += row + "\n";
-      });
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "ket_qua.csv";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
+    loadData();
   </script>
 </body>
 </html>
