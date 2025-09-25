@@ -13,15 +13,14 @@
     }
     h2 { text-align: center; margin-bottom: 12px; }
 
-    /* Khung BBU: hình chữ nhật (tỉ lệ 4:1) */
+    /* Khung BBU: cố định 1000px × 400px */
     .bbu {
       display: grid;
-      grid-template-columns: 1fr 2fr 2fr 1fr; /* col1, col2, col3, col4 */
-      grid-template-rows: repeat(4, 1fr);     /* 4 hàng */
+      grid-template-columns: 1fr 2fr 2fr 1fr; /* cột 1 nhỏ, cột 2+3 lớn, cột 4 nhỏ */
+      grid-template-rows: repeat(4, 1fr);     /* 4 hàng bằng nhau */
       gap: 8px;
-      width: 100%;
-      max-width: 1000px;
-      aspect-ratio: 4 / 1; /* chiều rộng = 4 lần chiều cao */
+      width: 1000px;
+      height: 400px;
       margin: 0 auto 20px;
       background: #fff;
       padding: 18px;
@@ -50,7 +49,12 @@
       text-align: center;
     }
 
-    /* Slot 16 hiển thị hẹp hơn */
+    /* Slot 14 và 15 rộng gấp 1.5 slot thường */
+    .slot.s14, .slot.s15 {
+      grid-column-end: span 2; /* chiếm thêm 1 cột */
+    }
+
+    /* Slot 16 hẹp hơn */
     .slot.s16 .slot-content {
       width: 50%;
       margin: 0 auto;
@@ -65,11 +69,13 @@
     /* responsive cho màn nhỏ */
     @media (max-width: 720px) {
       .bbu { 
-        grid-template-rows: repeat(8, 1fr);
+        grid-template-rows: repeat(8, 50px);
         grid-template-columns: 1fr 1fr;
-        aspect-ratio: auto;
+        width: 100%;
+        height: auto;
       }
       .slot.s16 { grid-column: 2; grid-row: 1 / span 8; }
+      .slot.s14, .slot.s15 { grid-column-end: span 1; }
     }
   </style>
 </head>
@@ -97,11 +103,11 @@
       return obj;
     }
 
-    // định nghĩa vị trí các slot
+    // định nghĩa vị trí slot
     const slotPositions = {
-      '15': { col: 1, row: 2, rowspan: 2 },
-      '14': { col: 1, row: 4, rowspan: 2 },
-      '13': { col: 1, row: 1 },
+      '15': { col: 1, row: 2 },
+      '14': { col: 1, row: 3 },
+      '13': { col: 1, row: 4 },
 
       '4':  { col: 2, row: 1 },
       '3':  { col: 2, row: 2 },
