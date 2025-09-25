@@ -18,6 +18,15 @@
       border-radius: 10px;
       background: white;
     }
+    .column:nth-child(1) {
+      width: 120px; /* Cột 1: 120px */
+    }
+    .column:nth-child(2), .column:nth-child(3) {
+      width: 240px; /* Cột 2,3: 240px */
+    }
+    .column:nth-child(4) {
+      width: 60px; /* Cột 4: 60px */
+    }
     .column {
       display: flex;
       flex-direction: column;
@@ -31,16 +40,17 @@
       background: #e9f3ff;
       font-size: 13px;
       padding: 10px 5px;
-      min-width: 140px;
+      width: 100%; /* Slot sẽ tự động điều chỉnh theo chiều rộng cột */
       min-height: 80px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-direction: column;
       white-space: pre-line;
+      box-sizing: border-box;
     }
     .slot.s14, .slot.s15 {
-      min-height: 150px; /* Tăng chiều cao để dễ thấy thay đổi */
+      min-height: 125px; /* Điều chỉnh để cột 1 = 350px (125+125+80+20=350) */
       background: #ffeb3b; /* Thêm màu vàng để dễ nhận biết */
     }
     .slot.s16 {
