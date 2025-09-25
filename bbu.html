@@ -11,7 +11,7 @@
       display: flex;
       justify-content: center;
       gap: 20px;
-      max-width: 900px;
+      max-width: 1000px;
       margin: 0 auto;
       padding: 20px;
       border: 3px solid #333;
@@ -29,13 +29,15 @@
       border-radius: 6px;
       text-align: center;
       background: #e9f3ff;
-      font-size: 14px;
-      padding: 15px 5px;
-      min-width: 100px;
-      min-height: 60px;
+      font-size: 13px;
+      padding: 10px 5px;
+      min-width: 140px;
+      min-height: 80px;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-direction: column;
+      white-space: pre-line;
     }
     .highlight {
       background: #ffeb3b !important;
@@ -76,7 +78,7 @@
       border: 1px solid #ccc;
       padding: 6px;
       text-align: left;
-      font-size: 14px;
+      font-size: 13px;
     }
     th { background: #007bff; color: white; }
     tr:nth-child(even) { background: #f9f9f9; }
@@ -110,7 +112,6 @@
         colDiv.className = "column";
 
         col.forEach(slot => {
-          // lấy tất cả thiết bị Rack = 1 và Unit Position khớp slot
           const matches = allDevices.filter(d =>
             String(d["Rack"] || "").trim() === "1" &&
             String(d["Unit Position"] || "").toUpperCase().includes(slot.toUpperCase())
@@ -120,9 +121,13 @@
           div.className = "slot";
 
           if (matches.length) {
-            div.innerHTML = matches.map(m =>
-              (m["Unit Position"] || slot) + " - " + (m["User Label"] || "")
-            ).join("<br>");
+            div.innerHTML = matches.map(m => {
+              return `${m["Unit Position"] || slot}
+${m["User Label"] || ""}
+${m["Vendor Unit Type Name"] || ""}
+SN: ${m["Serial Number"] || ""}`;
+            }).join("\n\n");
+
             if (matches.some(m => highlightDevices.includes(m))) {
               div.classList.add("highlight");
             }
@@ -165,7 +170,7 @@
         sectors[sec].forEach(r => {
           const el = document.createElement("div");
           el.className = "rru highlight";
-          el.innerText = (r["User Label"] || "RRU") + " (" + (r["Unit Position"] || "") + ")";
+          el.innerText = `${r["User Label"] || "RRU"} (${r["Unit Position"] || ""})\n${r["Vendor Unit Type Name"] || ""}\nSN: ${r["Serial Number"] || ""}`;
           secDiv.appendChild(el);
         });
         rruDiv.appendChild(secDiv);
@@ -205,7 +210,6 @@
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(sheet);
 
-        // tất cả thiết bị của User Label (pack + RRU)
         const highlightDevices = data.filter(d => String(d["User Label"] || "").trim() === label);
 
         renderBBU(data, highlightDevices);
