@@ -48,6 +48,11 @@
       background: #e8f5e9;
       font-size: 14px;
     }
+    .rru.highlight {
+      background: #c8e6c9;
+      border-color: #2e7d32;
+      font-weight: bold;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -87,8 +92,7 @@
       const container = document.getElementById("bbu");
       container.innerHTML = "";
 
-      // tạo grid theo layout
-      slotLayout.forEach((col, colIndex) => {
+      slotLayout.forEach(col => {
         col.forEach(slot => {
           const match = highlightDevices.find(
             d => String(d["Unit Position"] || "").includes(slot)
@@ -100,18 +104,24 @@
           container.appendChild(div);
         });
       });
+    }
 
-      // hiển thị RRUs
+    function renderRRUs(allDevices, label) {
       const rruDiv = document.getElementById("rrus");
       rruDiv.innerHTML = "";
-      const rrulist = highlightDevices.filter(d => /S\d+|\d{2}/.test(d["User Label"] || ""));
-      if (rrulist.length) {
+
+      // lọc đúng RRU
+      const rrus = allDevices.filter(d => (d["Inventory Unit Type"] || "").toUpperCase() === "RRU");
+
+      if (rrus.length) {
         rruDiv.innerHTML = "<h3>RRUs</h3>";
-        rrulist.forEach(r => {
+        rrus.forEach(r => {
           const el = document.createElement("div");
           el.className = "rru";
-          el.innerText = r["User Label"];
-          el.classList.add("highlight");
+          el.innerText = (r["User Label"] || "RRU") + " (" + (r["Unit Position"] || "") + ")";
+          if (String(r["User Label"] || "").trim() === label) {
+            el.classList.add("highlight");
+          }
           rruDiv.appendChild(el);
         });
       }
@@ -151,10 +161,10 @@
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(sheet);
 
-        // lọc thiết bị theo user label
         const highlightDevices = data.filter(d => String(d["User Label"] || "").trim() === label);
 
         renderBBU(data, highlightDevices);
+        renderRRUs(data, label);
         renderTable(highlightDevices);
       } catch (e) {
         document.body.innerHTML += "<p style='color:red'>❌ Lỗi: " + e.message + "</p>";
