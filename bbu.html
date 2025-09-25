@@ -113,11 +113,12 @@
         parseUnitPosition(d["Unit Position"]).rack === "1"
       );
 
+      // Layout mới
       const slotColumns = [
-        ["14", "13", "SA"],   // cột 1
-        ["4", "3", "2", "1"], // cột 2
-        ["8", "7", "6", "5"], // cột 3
-        ["FAN"]               // cột 4
+        ["15", "14", "13"],    // cột 1 bên trái từ dưới lên
+        ["4", "3", "2", "1"],  // cột 2
+        ["8", "7", "6", "5"],  // cột 3
+        ["16"]                 // cột 4 bên phải
       ];
 
       const container = document.getElementById("bbu");
