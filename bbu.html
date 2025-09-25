@@ -2,27 +2,22 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Sơ đồ BBU 8200</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <title>Sơ đồ BBU</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
     h2 { text-align: center; margin-bottom: 20px; }
     .bbu-layout {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(4, 120px);
+      grid-auto-rows: 80px;
+      gap: 10px;
       justify-content: center;
-      gap: 20px;
-      max-width: 900px;
       margin: 0 auto;
-      padding: 20px;
+      background: white;
       border: 3px solid #333;
       border-radius: 10px;
-      background: white;
-    }
-    .column {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      align-items: center;
+      padding: 15px;
+      width: max-content;
     }
     .slot {
       border: 2px solid #007bff;
@@ -30,9 +25,7 @@
       text-align: center;
       background: #e9f3ff;
       font-size: 14px;
-      padding: 15px 5px;
-      min-width: 100px;
-      min-height: 60px;
+      padding: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -43,50 +36,34 @@
       font-weight: bold;
     }
     .rru-container {
-      margin-top: 30px;
-      text-align: center;
+      margin-top: 20px;
     }
-    .rru-sector {
+    .rru-group {
       margin-bottom: 15px;
-    }
-    .rru-sector h4 {
-      margin: 5px 0;
-    }
-    .rru {
-      display: inline-block;
-      padding: 8px 12px;
-      margin: 5px;
+      padding: 10px;
       border: 2px solid #4caf50;
       border-radius: 6px;
-      background: #e8f5e9;
-      font-size: 14px;
+      background: #f1f8e9;
     }
-    .rru.highlight {
-      background: #c8e6c9;
-      border-color: #2e7d32;
+    .rru-title {
       font-weight: bold;
+      margin-bottom: 8px;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background: white;
+    .rru-item {
+      display: inline-block;
+      padding: 6px 10px;
+      margin: 3px;
+      border: 1px solid #4caf50;
+      border-radius: 4px;
+      background: #e8f5e9;
+      font-size: 13px;
     }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 6px;
-      text-align: left;
-      font-size: 14px;
-    }
-    th { background: #007bff; color: white; }
-    tr:nth-child(even) { background: #f9f9f9; }
   </style>
 </head>
 <body>
   <h2>📡 Sơ đồ BBU 8200</h2>
   <div class="bbu-layout" id="bbu"></div>
   <div class="rru-container" id="rrus"></div>
-  <div id="deviceTable"></div>
 
   <script>
     function getParam(name) {
@@ -94,115 +71,70 @@
       return url.searchParams.get(name);
     }
 
-    function renderBBU(allDevices, highlightDevices) {
-      const slotColumns = [
-        ["14", "13", "SA"],   // cột 1
-        ["4", "3", "2", "1"], // cột 2
-        ["8", "7", "6", "5"], // cột 3
-        ["FAN"]               // cột 4
-      ];
+    function renderBBU(devices, highlightLabel) {
+      const layout = {
+        col1: ["14", "13", "SA"],
+        col2: ["4", "3", "2", "1"],
+        col3: ["8", "7", "6", "5"],
+        col4: ["FAN"]
+      };
 
       const container = document.getElementById("bbu");
       container.innerHTML = "";
 
-      slotColumns.forEach(col => {
-        const colDiv = document.createElement("div");
-        colDiv.className = "column";
+      const allSlots = [...layout.col1, ...layout.col2, ...layout.col3, ...layout.col4];
 
-        col.forEach(slot => {
-          const match = highlightDevices.find(
-            d => String(d["Unit Position"] || "").toUpperCase().includes(slot.toUpperCase())
-          );
-          const div = document.createElement("div");
-          div.className = "slot";
-          div.innerText = match ? (match["Unit Position"] + " - " + match["User Label"]) : slot;
-          if (match) div.classList.add("highlight");
-          colDiv.appendChild(div);
-        });
-
-        container.appendChild(colDiv);
+      allSlots.forEach(slot => {
+        const match = devices.find(d => String(d["Unit Position"] || "").includes(slot));
+        const div = document.createElement("div");
+        div.className = "slot";
+        div.innerText = match ? (match["User Label"] || slot) : slot;
+        if (match && match["User Label"] === highlightLabel) {
+          div.classList.add("highlight");
+        }
+        container.appendChild(div);
       });
-    }
 
-    function renderRRUs(allDevices, label) {
+      // Lấy RRU của label này
       const rruDiv = document.getElementById("rrus");
-      rruDiv.innerHTML = "";
+      rruDiv.innerHTML = "<h3>RRUs</h3>";
 
-      const rrus = allDevices.filter(d =>
-        (d["Inventory Unit Type"] || "").toUpperCase() === "RRU" &&
-        String(d["User Label"] || "").trim() === label
+      const rrulist = devices.filter(d => 
+        d["Inventory Unit Type"] === "RRU" && d["User Label"] === highlightLabel
       );
 
-      if (!rrus.length) return;
-
-      const sectors = {};
-      rrus.forEach(r => {
-        const ul = r["User Label"] || "";
-        const sectorMatch = ul.match(/S\d+/i);
-        const sector = sectorMatch ? sectorMatch[0].toUpperCase() : "Khác";
-        if (!sectors[sector]) sectors[sector] = [];
-        sectors[sector].push(r);
+      // Gom nhóm theo User Label
+      const grouped = {};
+      rrulist.forEach(r => {
+        const lbl = r["User Label"] || "Khác";
+        if (!grouped[lbl]) grouped[lbl] = [];
+        grouped[lbl].push(r);
       });
 
-      rruDiv.innerHTML = "<h3>RRUs</h3>";
-      Object.keys(sectors).forEach(sec => {
-        const secDiv = document.createElement("div");
-        secDiv.className = "rru-sector";
-        secDiv.innerHTML = `<h4>${sec}</h4>`;
-        sectors[sec].forEach(r => {
+      Object.keys(grouped).forEach(lbl => {
+        const group = document.createElement("div");
+        group.className = "rru-group";
+
+        const title = document.createElement("div");
+        title.className = "rru-title";
+        title.innerText = "User Label: " + lbl;
+        group.appendChild(title);
+
+        grouped[lbl].forEach(r => {
           const el = document.createElement("div");
-          el.className = "rru highlight";
-          el.innerText = (r["User Label"] || "RRU") + " (" + (r["Unit Position"] || "") + ")";
-          secDiv.appendChild(el);
+          el.className = "rru-item";
+          el.innerText = r["Unit Position"] || "(không rõ vị trí)";
+          group.appendChild(el);
         });
-        rruDiv.appendChild(secDiv);
+
+        rruDiv.appendChild(group);
       });
     }
 
-    function renderTable(rows) {
-      if (!rows.length) {
-        document.getElementById("deviceTable").innerHTML = "<p>Không có thiết bị nào</p>";
-        return;
-      }
-
-      const cols = Object.keys(rows[0]);
-      let html = "<h3>Danh sách thiết bị</h3><table><thead><tr>";
-      cols.forEach(c => html += `<th>${c}</th>`);
-      html += "</tr></thead><tbody>";
-
-      rows.forEach(r => {
-        html += "<tr>";
-        cols.forEach(c => html += `<td>${r[c] ?? ""}</td>`);
-        html += "</tr>";
-      });
-
-      html += "</tbody></table>";
-      document.getElementById("deviceTable").innerHTML = html;
-    }
-
+    // === MAIN ===
+    const devices = JSON.parse(localStorage.getItem("devices") || "[]");
     const label = getParam("label");
-
-    async function loadData() {
-      try {
-        const response = await fetch("inventory.xlsx");
-        if (!response.ok) throw new Error("Không tìm thấy file inventory.xlsx");
-
-        const buf = await response.arrayBuffer();
-        const wb = XLSX.read(buf, { type: "array" });
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json(sheet);
-
-        const highlightDevices = data.filter(d => String(d["User Label"] || "").trim() === label);
-
-        renderBBU(data, highlightDevices);
-        renderRRUs(data, label);
-        renderTable(highlightDevices);
-      } catch (e) {
-        document.body.innerHTML += "<p style='color:red'>❌ Lỗi: " + e.message + "</p>";
-      }
-    }
-
-    loadData();
+    renderBBU(devices, label);
   </script>
 </body>
 </html>
