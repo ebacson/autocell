@@ -45,57 +45,88 @@
       background: #e8f5e9;
       font-size: 14px;
     }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: left;
+      font-size: 14px;
+    }
+    th { background: #007bff; color: white; }
+    tr:nth-child(even) { background: #f9f9f9; }
   </style>
 </head>
 <body>
   <h2>📡 Sơ đồ BBU 8200</h2>
   <div class="bbu-container" id="bbu"></div>
   <div class="rru-container" id="rrus"></div>
+  <div id="deviceTable"></div>
 
   <script>
-    // Lấy query param từ URL
     function getParam(name) {
       const url = new URL(window.location.href);
       return url.searchParams.get(name);
     }
 
-    function renderBBU(devices, highlightLabel) {
+    function renderBBU(devices, highlightDevices) {
       const bbuSlots = ["PM", "SA", "FS", "CCC", "BPN2", "BPK_d"];
       const container = document.getElementById("bbu");
       container.innerHTML = "";
 
       bbuSlots.forEach(slot => {
-        const match = devices.find(d => String(d["Unit Position"] || "").includes(slot));
+        const match = highlightDevices.find(d => String(d["Unit Position"] || "").includes(slot));
         const div = document.createElement("div");
         div.className = "slot";
-        div.innerText = match ? (match["User Label"] || slot) : slot;
+        div.innerText = match ? (match["Unit Position"] + " - " + match["User Label"]) : slot;
 
-        if (match && match["User Label"] === highlightLabel) {
-          div.classList.add("highlight");
-        }
+        if (match) div.classList.add("highlight");
         container.appendChild(div);
       });
 
       // Gom tất cả RRU
       const rruDiv = document.getElementById("rrus");
       rruDiv.innerHTML = "";
-      const rrulist = devices.filter(d => /S\d+|\d{2}/.test(d["User Label"] || ""));
+      const rrulist = highlightDevices.filter(d => /S\d+|\d{2}/.test(d["User Label"] || ""));
       if (rrulist.length) {
         rruDiv.innerHTML = "<h3>RRUs</h3>";
         rrulist.forEach(r => {
           const el = document.createElement("div");
           el.className = "rru";
           el.innerText = r["User Label"];
-          if (r["User Label"] === highlightLabel) {
-            el.classList.add("highlight");
-          }
+          el.classList.add("highlight");
           rruDiv.appendChild(el);
         });
       }
     }
 
+    function renderTable(rows) {
+      if (!rows.length) {
+        document.getElementById("deviceTable").innerHTML = "<p>Không có thiết bị nào</p>";
+        return;
+      }
+
+      const cols = Object.keys(rows[0]);
+      let html = "<h3>Danh sách thiết bị</h3><table><thead><tr>";
+      cols.forEach(c => html += `<th>${c}</th>`);
+      html += "</tr></thead><tbody>";
+
+      rows.forEach(r => {
+        html += "<tr>";
+        cols.forEach(c => html += `<td>${r[c] ?? ""}</td>`);
+        html += "</tr>";
+      });
+
+      html += "</tbody></table>";
+      document.getElementById("deviceTable").innerHTML = html;
+    }
+
     // === MAIN ===
-    const highlightLabel = getParam("label"); // lấy label từ URL
+    const label = getParam("label");
 
     async function loadData() {
       try {
@@ -107,8 +138,11 @@
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(sheet);
 
-        console.log("✅ Dữ liệu đã load:", data);
-        renderBBU(data, highlightLabel);
+        // lọc tất cả thiết bị có cùng user label
+        const highlightDevices = data.filter(d => String(d["User Label"] || "").trim() === label);
+
+        renderBBU(data, highlightDevices);
+        renderTable(highlightDevices);
       } catch (e) {
         document.body.innerHTML += "<p style='color:red'>❌ Lỗi: " + e.message + "</p>";
       }
