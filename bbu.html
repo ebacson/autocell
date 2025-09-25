@@ -110,13 +110,26 @@
         colDiv.className = "column";
 
         col.forEach(slot => {
-          const match = highlightDevices.find(
-            d => String(d["Unit Position"] || "").toUpperCase().includes(slot.toUpperCase())
+          // lấy tất cả thiết bị Rack = 1 và Unit Position khớp slot
+          const matches = allDevices.filter(d =>
+            String(d["Rack"] || "").trim() === "1" &&
+            String(d["Unit Position"] || "").toUpperCase().includes(slot.toUpperCase())
           );
+
           const div = document.createElement("div");
           div.className = "slot";
-          div.innerText = match ? (match["Unit Position"] + " - " + match["User Label"]) : slot;
-          if (match) div.classList.add("highlight");
+
+          if (matches.length) {
+            div.innerHTML = matches.map(m =>
+              (m["Unit Position"] || slot) + " - " + (m["User Label"] || "")
+            ).join("<br>");
+            if (matches.some(m => highlightDevices.includes(m))) {
+              div.classList.add("highlight");
+            }
+          } else {
+            div.innerText = slot;
+          }
+
           colDiv.appendChild(div);
         });
 
@@ -192,12 +205,12 @@
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(sheet);
 
-        // lấy tất cả thiết bị có User Label giống label
-        const userDevices = data.filter(d => String(d["User Label"] || "").trim() === label);
+        // tất cả thiết bị của User Label (pack + RRU)
+        const highlightDevices = data.filter(d => String(d["User Label"] || "").trim() === label);
 
-        renderBBU(data, userDevices);
+        renderBBU(data, highlightDevices);
         renderRRUs(data, label);
-        renderTable(userDevices); // bảng hiển thị tất cả pack + RRU cùng label
+        renderTable(highlightDevices);
       } catch (e) {
         document.body.innerHTML += "<p style='color:red'>❌ Lỗi: " + e.message + "</p>";
       }
