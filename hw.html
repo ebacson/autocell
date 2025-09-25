@@ -54,7 +54,7 @@
         const sheet = wb.Sheets[wb.SheetNames[0]];
         data = XLSX.utils.sheet_to_json(sheet);
 
-        console.log("✅ Dữ liệu:", data);
+        console.log("✅ Dữ liệu đã load:", data);
       } catch (e) {
         alert("❌ Lỗi: " + e.message);
       }
@@ -68,19 +68,24 @@
 
       let table = "<table><thead><tr>";
       columns.forEach(c => table += `<th>${c}</th>`);
-      table += "</tr></thead><tbody>";
+      table += "</tr></thead><tbody></tbody></table>";
+
+      const result = document.getElementById("result");
+      result.innerHTML = table;
+      const tbody = result.querySelector("tbody");
 
       rows.forEach(r => {
-        const userLabel = r["User Label"] || "";
-        table += `<tr onclick="openBBU('${userLabel.replace(/'/g, "\\'")}')">`;
-        columns.forEach(c => {
-          table += `<td>${r[c] ?? ""}</td>`;
-        });
-        table += "</tr>";
-      });
+        const tr = document.createElement("tr");
+        tr.addEventListener("click", () => openBBU(r["User Label"] || ""));
 
-      table += "</tbody></table>";
-      document.getElementById("result").innerHTML = table;
+        columns.forEach(c => {
+          const td = document.createElement("td");
+          td.textContent = r[c] ?? "";
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      });
     }
 
     function searchSerial() {
@@ -102,9 +107,10 @@
     }
 
     function openBBU(userLabel) {
+      console.log("👉 Mở bbu.html với label:", userLabel);
       // Lưu toàn bộ data
       localStorage.setItem("devices", JSON.stringify(data));
-      // Chuyển sang bbu.html trong cùng cửa sổ
+      // Chuyển sang bbu.html trong cùng thư mục
       window.location.href = "bbu.html?label=" + encodeURIComponent(userLabel);
     }
 
