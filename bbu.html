@@ -10,21 +10,27 @@
       font-family: Arial, sans-serif;
       background: #f5f5f5;
       padding: 20px;
+      text-align: center;
     }
     h2 {
-      text-align: center;
       margin-bottom: 12px;
     }
 
-    /* Khung BBU cố định tỉ lệ 4:1 */
+    /* Bao ngoài để scale */
+    .scale-container {
+      width: 100%;
+      overflow-x: auto;
+      text-align: center;
+    }
+
+    /* Khung BBU cố định 4:1 */
     .bbu {
       display: grid;
-      grid-template-columns: 1fr 2fr 2fr 1fr; /* col1, col2, col3, col4 */
-      grid-template-rows: repeat(4, 1fr);     /* 4 hàng */
+      grid-template-columns: 1fr 2fr 2fr 1fr;
+      grid-template-rows: repeat(4, 1fr);
       gap: 8px;
-      width: 100%;
-      max-width: 1000px;
-      aspect-ratio: 4 / 1; /* chiều rộng = 4 lần chiều cao */
+      width: 800px;   /* cố định */
+      height: 200px;  /* 1/4 của width */
       margin: 0 auto 20px;
       background: #fff;
       padding: 18px;
@@ -65,32 +71,37 @@
       font-weight: bold;
     }
 
-    /* Responsive (nếu cần co trên màn nhỏ) */
-    @media (max-width: 720px) {
-      .bbu {
-        grid-template-rows: repeat(8, 1fr);
-        grid-template-columns: 1fr 1fr;
-        aspect-ratio: auto;
-      }
-      .slot.s16 {
-        grid-column: 2;
-        grid-row: 1 / span 8;
-      }
+    /* Scale trên mobile thay vì đổi layout */
+    @media (max-width: 900px) {
+      .bbu { transform: scale(0.8); transform-origin: top center; }
+    }
+    @media (max-width: 600px) {
+      .bbu { transform: scale(0.6); transform-origin: top center; }
+    }
+
+    /* Khung RRU giả lập */
+    .rru {
+      width: 800px;
+      margin: 20px auto;
+      border: 2px dashed #666;
+      padding: 10px;
+      background: #fff;
     }
   </style>
 </head>
 <body>
   <h2>📡 Sơ đồ BBU 8200</h2>
-  <div id="bbu" class="bbu" aria-label="BBU layout"></div>
+  <div class="scale-container">
+    <div id="bbu" class="bbu" aria-label="BBU layout"></div>
+    <div id="rru" class="rru">📶 Khu vực hiển thị RRU (placeholder)</div>
+  </div>
 
   <script>
     function getParam(name) {
       try {
         const url = new URL(window.location.href);
         return url.searchParams.get(name);
-      } catch (e) {
-        return null;
-      }
+      } catch (e) { return null; }
     }
 
     function parseUnitPosition(unitPos) {
@@ -110,8 +121,8 @@
     // vị trí slot trong grid
     const slotPositions = {
       '13': { col: 1, row: 1 },
-      '14': { col: 1, row: 2, rowspan: 2 }, // cao 1.5x
-      '15': { col: 1, row: 4, rowspan: 2 }, // cao 1.5x
+      '14': { col: 1, row: 2, rowspan: 2 },
+      '15': { col: 1, row: 4, rowspan: 2 },
       '1':  { col: 2, row: 1 },
       '2':  { col: 2, row: 2 },
       '3':  { col: 2, row: 3 },
@@ -120,7 +131,7 @@
       '6':  { col: 3, row: 2 },
       '7':  { col: 3, row: 3 },
       '8':  { col: 3, row: 4 },
-      '16': { col: 4, row: 1, rowspan: 4 }  // chiếm toàn cột
+      '16': { col: 4, row: 1, rowspan: 4 }
     };
 
     function renderBBU(allDevices, label) {
@@ -132,11 +143,8 @@
       const container = document.getElementById('bbu');
       container.innerHTML = '';
 
-      const slotsOrder = Object.keys(slotPositions);
-      slotsOrder.forEach(slotKey => {
+      Object.keys(slotPositions).forEach(slotKey => {
         const pos = slotPositions[slotKey];
-        if (!pos) return;
-
         const wrapper = document.createElement('div');
         wrapper.className = `slot s${slotKey}`;
         wrapper.style.gridColumnStart = pos.col;
@@ -168,8 +176,7 @@
     async function loadData() {
       const label = getParam('label') || '';
       if (!label) {
-        document.body.insertAdjacentHTML(
-          'beforeend',
+        document.body.insertAdjacentHTML('beforeend',
           '<p style="color:orange">⚠️ Vui lòng cung cấp param ?label=NAME trong URL để lọc theo User Label.</p>'
         );
       }
@@ -181,8 +188,13 @@
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(sheet);
         renderBBU(data, label);
+
+        // TODO: render RRU nếu có dữ liệu
+        document.getElementById('rru').innerText = "📶 RRU hiển thị (sẽ render sau)";
       } catch (err) {
-        document.body.insertAdjacentHTML('beforeend', `<p style="color:red">❌ Lỗi: ${err.message}</p>`);
+        document.body.insertAdjacentHTML('beforeend',
+          `<p style="color:red">❌ Lỗi: ${err.message}</p>`
+        );
       }
     }
 
