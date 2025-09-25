@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Sơ đồ BBU</title>
+<style>
+  body { font-family: Arial; text-align: center; }
+  .bbu { display: inline-block; border: 2px solid #333; padding: 10px; margin-top: 20px; }
+  .slot { border: 1px solid #999; margin: 2px; padding: 10px; min-width: 80px; }
+  .row { display: flex; justify-content: center; }
+  .rru { display: inline-block; margin: 10px; border: 1px solid #666; padding: 10px; }
+  .highlight { background: yellow; font-weight: bold; }
+</style>
+</head>
+<body>
+<h2>Sơ đồ BBU cho <span id="label"></span></h2>
+
+<div id="bbu" class="bbu"></div>
+
+<h3>RRU</h3>
+<div id="rru-list"></div>
+
+<script>
+// Lấy UserLabel từ URL
+const urlParams = new URLSearchParams(window.location.search);
+const label = urlParams.get("label");
+document.getElementById("label").innerText = label;
+
+// Lấy dữ liệu từ localStorage
+let devices = JSON.parse(localStorage.getItem("devices") || "[]");
+
+// --- Tạo sơ đồ BBU ---
+const slots = ["PM", "FS", "BPN2", "PM", "BPN2", "SA", "CCC", "BPK_d"];
+const bbuDiv = document.getElementById("bbu");
+
+// Vẽ slot
+for (let i = 0; i < slots.length; i += 3) {
+  let row = document.createElement("div");
+  row.className = "row";
+
+  for (let j = 0; j < 3; j++) {
+    if (i + j < slots.length) {
+      let slotName = slots[i + j];
+      let div = document.createElement("div");
+      div.className = "slot";
+      div.textContent = slotName;
+
+      // highlight nếu có cùng UserLabel
+      let match = devices.find(d => d.userLabel === label && d.type === slotName);
+      if (match) {
+        div.classList.add("highlight");
+      }
+      row.appendChild(div);
+    }
+  }
+
+  bbuDiv.appendChild(row);
+}
+
+// --- Vẽ danh sách RRU ---
+const rruDiv = document.getElementById("rru-list");
+devices.filter(d => d.category === "RRU").forEach(d => {
+  let div = document.createElement("div");
+  div.className = "rru";
+  if (d.userLabel === label) div.classList.add("highlight");
+  div.textContent = d.userLabel;
+  rruDiv.appendChild(div);
+});
+</script>
+
+</body>
+</html>
