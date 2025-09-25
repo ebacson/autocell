@@ -2,30 +2,33 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Sơ đồ BBU</title>
+  <title>Sơ đồ BBU 8200</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
     h2 { text-align: center; margin-bottom: 20px; }
-    .bbu-container {
-      display: flex;
-      flex-wrap: wrap;
-      width: 600px;
+    .bbu-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      max-width: 800px;
       margin: 0 auto;
+      padding: 15px;
       border: 3px solid #333;
       border-radius: 10px;
-      padding: 10px;
       background: white;
     }
     .slot {
-      flex: 1 0 30%;
-      margin: 5px;
-      padding: 10px;
       border: 2px solid #007bff;
       border-radius: 6px;
       text-align: center;
       background: #e9f3ff;
       font-size: 14px;
+      padding: 15px 5px;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .highlight {
       background: #ffeb3b !important;
@@ -63,7 +66,7 @@
 </head>
 <body>
   <h2>📡 Sơ đồ BBU 8200</h2>
-  <div class="bbu-container" id="bbu"></div>
+  <div class="bbu-grid" id="bbu"></div>
   <div class="rru-container" id="rrus"></div>
   <div id="deviceTable"></div>
 
@@ -73,22 +76,32 @@
       return url.searchParams.get(name);
     }
 
-    function renderBBU(devices, highlightDevices) {
-      const bbuSlots = ["PM", "SA", "FS", "CCC", "BPN2", "BPK_d"];
+    function renderBBU(allDevices, highlightDevices) {
+      const slotLayout = [
+        ["14", "13", "SA"], // cột 1
+        ["4", "3", "2", "1"], // cột 2
+        ["8", "7", "6", "5"], // cột 3
+        ["FAN"] // cột 4
+      ];
+
       const container = document.getElementById("bbu");
       container.innerHTML = "";
 
-      bbuSlots.forEach(slot => {
-        const match = highlightDevices.find(d => String(d["Unit Position"] || "").includes(slot));
-        const div = document.createElement("div");
-        div.className = "slot";
-        div.innerText = match ? (match["Unit Position"] + " - " + match["User Label"]) : slot;
-
-        if (match) div.classList.add("highlight");
-        container.appendChild(div);
+      // tạo grid theo layout
+      slotLayout.forEach((col, colIndex) => {
+        col.forEach(slot => {
+          const match = highlightDevices.find(
+            d => String(d["Unit Position"] || "").includes(slot)
+          );
+          const div = document.createElement("div");
+          div.className = "slot";
+          div.innerText = match ? (match["Unit Position"] + " - " + match["User Label"]) : slot;
+          if (match) div.classList.add("highlight");
+          container.appendChild(div);
+        });
       });
 
-      // Gom tất cả RRU
+      // hiển thị RRUs
       const rruDiv = document.getElementById("rrus");
       rruDiv.innerHTML = "";
       const rrulist = highlightDevices.filter(d => /S\d+|\d{2}/.test(d["User Label"] || ""));
@@ -138,7 +151,7 @@
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(sheet);
 
-        // lọc tất cả thiết bị có cùng user label
+        // lọc thiết bị theo user label
         const highlightDevices = data.filter(d => String(d["User Label"] || "").trim() === label);
 
         renderBBU(data, highlightDevices);
