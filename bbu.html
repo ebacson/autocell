@@ -2,28 +2,40 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Sơ đồ BBU</title>
+  <title>Sơ đồ BBU 8200</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
     h2 { text-align: center; margin-bottom: 20px; }
     .bbu-layout {
-      display: grid;
-      grid-template-columns: repeat(4, 120px);
-      grid-auto-rows: 80px;
-      gap: 10px;
+      display: flex;
       justify-content: center;
-      margin-bottom: 30px;
+      gap: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      border: 3px solid #333;
+      border-radius: 10px;
+      background: white;
+    }
+    .column {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
     }
     .slot {
+      border: 2px solid #007bff;
+      border-radius: 6px;
+      text-align: center;
+      background: #e9f3ff;
+      font-size: 14px;
+      padding: 15px 5px;
+      min-width: 100px;
+      min-height: 60px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 2px solid #007bff;
-      border-radius: 6px;
-      background: #e9f3ff;
-      font-size: 14px;
-      text-align: center;
-      padding: 5px;
     }
     .highlight {
       background: #ffeb3b !important;
@@ -31,7 +43,14 @@
       font-weight: bold;
     }
     .rru-container {
-      margin-top: 20px;
+      margin-top: 30px;
+      text-align: center;
+    }
+    .rru-sector {
+      margin-bottom: 15px;
+    }
+    .rru-sector h4 {
+      margin: 5px 0;
     }
     .rru {
       display: inline-block;
@@ -42,12 +61,32 @@
       background: #e8f5e9;
       font-size: 14px;
     }
+    .rru.highlight {
+      background: #c8e6c9;
+      border-color: #2e7d32;
+      font-weight: bold;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: left;
+      font-size: 14px;
+    }
+    th { background: #007bff; color: white; }
+    tr:nth-child(even) { background: #f9f9f9; }
   </style>
 </head>
 <body>
   <h2>📡 Sơ đồ BBU 8200</h2>
   <div class="bbu-layout" id="bbu"></div>
   <div class="rru-container" id="rrus"></div>
+  <div id="deviceTable"></div>
 
   <script>
     function getParam(name) {
@@ -55,56 +94,116 @@
       return url.searchParams.get(name);
     }
 
-    function renderBBU(devices, highlightLabel) {
-      // lọc dữ liệu theo user label và chỉ lấy pack hoặc RRU
-      const filtered = devices.filter(d =>
-        d["User Label"] === highlightLabel &&
-        (d["Inventory Unit Type"] === "pack" || d["Inventory Unit Type"] === "RRU")
-      );
-
-      // định nghĩa layout BBU (slot theo cột)
-      const slotLayout = [
-        "14", "13", "SA",
-        "4", "3", "2", "1",
-        "8", "7", "6", "5",
-        "FAN"
+    function renderBBU(allDevices, highlightDevices) {
+      const slotColumns = [
+        ["14", "13", "SA"],   // cột 1
+        ["4", "3", "2", "1"], // cột 2
+        ["8", "7", "6", "5"], // cột 3
+        ["FAN"]               // cột 4
       ];
 
       const container = document.getElementById("bbu");
       container.innerHTML = "";
 
-      slotLayout.forEach(slot => {
-        const match = filtered.find(d => (d["Unit Position"] || "").toString().includes(slot) && d["Inventory Unit Type"] === "pack");
-        const div = document.createElement("div");
-        div.className = "slot";
-        div.innerText = match ? (match["User Label"] + "\n" + match["Unit Position"]) : slot;
+      slotColumns.forEach(col => {
+        const colDiv = document.createElement("div");
+        colDiv.className = "column";
 
-        if (match && match["User Label"] === highlightLabel) {
-          div.classList.add("highlight");
-        }
-        container.appendChild(div);
+        col.forEach(slot => {
+          const match = highlightDevices.find(
+            d => String(d["Unit Position"] || "").toUpperCase().includes(slot.toUpperCase())
+          );
+          const div = document.createElement("div");
+          div.className = "slot";
+          div.innerText = match ? (match["Unit Position"] + " - " + match["User Label"]) : slot;
+          if (match) div.classList.add("highlight");
+          colDiv.appendChild(div);
+        });
+
+        container.appendChild(colDiv);
       });
+    }
 
-      // hiển thị RRUs
+    function renderRRUs(allDevices, label) {
       const rruDiv = document.getElementById("rrus");
       rruDiv.innerHTML = "";
-      const rrulist = filtered.filter(d => d["Inventory Unit Type"] === "RRU");
 
-      if (rrulist.length) {
-        rruDiv.innerHTML = "<h3>RRUs</h3>";
-        rrulist.forEach(r => {
+      const rrus = allDevices.filter(d =>
+        (d["Inventory Unit Type"] || "").toUpperCase() === "RRU" &&
+        String(d["User Label"] || "").trim() === label
+      );
+
+      if (!rrus.length) return;
+
+      const sectors = {};
+      rrus.forEach(r => {
+        const ul = r["User Label"] || "";
+        const sectorMatch = ul.match(/S\d+/i);
+        const sector = sectorMatch ? sectorMatch[0].toUpperCase() : "Khác";
+        if (!sectors[sector]) sectors[sector] = [];
+        sectors[sector].push(r);
+      });
+
+      rruDiv.innerHTML = "<h3>RRUs</h3>";
+      Object.keys(sectors).forEach(sec => {
+        const secDiv = document.createElement("div");
+        secDiv.className = "rru-sector";
+        secDiv.innerHTML = `<h4>${sec}</h4>`;
+        sectors[sec].forEach(r => {
           const el = document.createElement("div");
-          el.className = "rru";
-          el.innerText = `${r["User Label"]} (${r["Unit Position"] || ""})`;
-          rruDiv.appendChild(el);
+          el.className = "rru highlight";
+          el.innerText = (r["User Label"] || "RRU") + " (" + (r["Unit Position"] || "") + ")";
+          secDiv.appendChild(el);
         });
+        rruDiv.appendChild(secDiv);
+      });
+    }
+
+    function renderTable(rows) {
+      if (!rows.length) {
+        document.getElementById("deviceTable").innerHTML = "<p>Không có thiết bị nào</p>";
+        return;
+      }
+
+      const cols = Object.keys(rows[0]);
+      let html = "<h3>Danh sách thiết bị</h3><table><thead><tr>";
+      cols.forEach(c => html += `<th>${c}</th>`);
+      html += "</tr></thead><tbody>";
+
+      rows.forEach(r => {
+        html += "<tr>";
+        cols.forEach(c => html += `<td>${r[c] ?? ""}</td>`);
+        html += "</tr>";
+      });
+
+      html += "</tbody></table>";
+      document.getElementById("deviceTable").innerHTML = html;
+    }
+
+    const label = getParam("label");
+
+    async function loadData() {
+      try {
+        const response = await fetch("inventory.xlsx");
+        if (!response.ok) throw new Error("Không tìm thấy file inventory.xlsx");
+
+        const buf = await response.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(sheet);
+
+        // lấy tất cả thiết bị có User Label giống label
+        const userDevices = data.filter(d => String(d["User Label"] || "").trim() === label);
+
+        renderBBU(data, userDevices);
+        renderRRUs(data, label);
+        renderTable(userDevices); // bảng hiển thị tất cả pack + RRU cùng label
+      } catch (e) {
+        document.body.innerHTML += "<p style='color:red'>❌ Lỗi: " + e.message + "</p>";
       }
     }
 
-    // === MAIN ===
-    const devices = JSON.parse(localStorage.getItem("devices") || "[]");
-    const label = getParam("label");
-    renderBBU(devices, label);
+    loadData();
   </script>
 </body>
 </html>
