@@ -6,28 +6,32 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 10px; background: #f5f5f5; }
-    h2 { text-align: center; margin-bottom: 15px; }
+    h2 { text-align: center; margin-bottom: 10px; }
     input, button { margin: 5px 0; padding: 10px; font-size: 16px; width: 100%; border-radius: 6px; border: 1px solid #ccc; }
     button { background: #007bff; color: #fff; border: none; cursor: pointer; }
-    button:hover { background: #0056b3; }
+    button[disabled] { opacity: 0.6; cursor: not-allowed; }
+    button:hover:not([disabled]) { background: #0056b3; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; background: white; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: left; word-break: break-word; }
     th { background: #007bff; color: white; position: sticky; top: 0; }
     tr:nth-child(even) { background: #f9f9f9; }
     tr:hover { background: #ffe599; cursor: pointer; }
     .table-container { overflow-x: auto; max-height: 70vh; }
+    #status { margin: 8px 0; font-size: 13px; color: #333; }
   </style>
 </head>
 <body>
   <h2>🔍 Tra cứu thiết bị</h2>
-  
-  <input id="serialInput" placeholder="Nhập Serial Number (tìm chính xác)">
-  <button onclick="searchSerial()">Tìm theo Serial</button>
-  
-  <input id="userInput" placeholder="Nhập User Label (tìm gần đúng)">
-  <button onclick="searchUser()">Tìm theo User Label</button>
 
-  <button onclick="showAll()">Hiện tất cả</button>
+  <div id="status">Đang tải dữ liệu...</div>
+
+  <input id="serialInput" placeholder="Nhập Serial Number (tìm chính xác)" disabled>
+  <button id="btnSerial" disabled>Tìm theo Serial</button>
+
+  <input id="userInput" placeholder="Nhập User Label (tìm gần đúng)" disabled>
+  <button id="btnUser" disabled>Tìm theo User Label</button>
+
+  <button id="btnShowAll" disabled>Hiện tất cả (200 dòng)</button>
 
   <div class="table-container">
     <div id="result"></div>
@@ -44,24 +48,40 @@
       "Unit Position"
     ];
 
+    const statusEl = document.getElementById('status');
+    const btnSerial = document.getElementById('btnSerial');
+    const btnUser = document.getElementById('btnUser');
+    const btnShowAll = document.getElementById('btnShowAll');
+    const serialInput = document.getElementById('serialInput');
+    const userInput = document.getElementById('userInput');
+
     async function loadData() {
       try {
         const response = await fetch("inventory.xlsx");
-        if (!response.ok) throw new Error("Không tìm thấy file inventory.xlsx");
-
+        if (!response.ok) throw new Error("Không tìm thấy file inventory.xlsx (HTTP " + response.status + ")");
         const buf = await response.arrayBuffer();
         const wb = XLSX.read(buf, { type: "array" });
         const sheet = wb.Sheets[wb.SheetNames[0]];
         data = XLSX.utils.sheet_to_json(sheet);
-
-        console.log("✅ Dữ liệu đã load:", data);
+        console.log("✅ Dữ liệu đã load:", data.length, "dòng");
+        statusEl.textContent = "✅ Đã load " + data.length + " dòng.";
+        enableControls();
       } catch (e) {
-        alert("❌ Lỗi: " + e.message);
+        console.error("Lỗi loadData:", e);
+        statusEl.textContent = "❌ Lỗi khi load inventory.xlsx: " + e.message;
       }
     }
 
+    function enableControls() {
+      serialInput.disabled = false;
+      userInput.disabled = false;
+      btnSerial.disabled = false;
+      btnUser.disabled = false;
+      btnShowAll.disabled = false;
+    }
+
     function renderTable(rows) {
-      if (!rows.length) {
+      if (!rows || !rows.length) {
         document.getElementById("result").innerHTML = "<p>Không tìm thấy dữ liệu</p>";
         return;
       }
@@ -74,9 +94,12 @@
       result.innerHTML = table;
       const tbody = result.querySelector("tbody");
 
-      rows.forEach(r => {
+      rows.forEach((r, idx) => {
         const tr = document.createElement("tr");
-        tr.addEventListener("click", () => openBBU(r["User Label"] || ""));
+        // gán data-label cho debug
+        const label = r["User Label"] || "";
+        tr.dataset.label = label;
+        tr.addEventListener("click", () => openBBU(label, r));
 
         columns.forEach(c => {
           const td = document.createElement("td");
@@ -89,14 +112,14 @@
     }
 
     function searchSerial() {
-      const val = document.getElementById("serialInput").value.trim();
+      const val = serialInput.value.trim();
       if (!val) return alert("⚠️ Nhập Serial trước");
-      const result = data.filter(r => String(r["Serial Number"]).trim() === val);
+      const result = data.filter(r => String(r["Serial Number"] || "").trim() === val);
       renderTable(result);
     }
 
     function searchUser() {
-      const val = document.getElementById("userInput").value.trim().toLowerCase();
+      const val = userInput.value.trim().toLowerCase();
       if (!val) return alert("⚠️ Nhập User Label trước");
       const result = data.filter(r => String(r["User Label"] || "").toLowerCase().includes(val));
       renderTable(result);
@@ -106,14 +129,54 @@
       renderTable(data.slice(0, 200)); // Giới hạn 200 dòng
     }
 
-    function openBBU(userLabel) {
-      console.log("👉 Mở bbu.html với label:", userLabel);
-      // Lưu toàn bộ data
-      localStorage.setItem("devices", JSON.stringify(data));
-      // Chuyển sang bbu.html trong cùng thư mục
-      window.location.href = "https://ebacson.github.io/autocell/bbu.html?label=" + encodeURIComponent(userLabel);
+    async function checkBbuAvailable() {
+      try {
+        const resp = await fetch('bbu.html', { method: 'GET', cache: 'no-store' });
+        return resp.ok;
+      } catch (e) {
+        // fetch có thể fail nếu chạy bằng file:// hoặc server chặn HEAD/GET. Trả về false.
+        console.warn('checkBbuAvailable error', e);
+        return false;
+      }
     }
 
+    async function openBBU(userLabel, row) {
+      console.log("👉 Mở bbu.html với label:", userLabel);
+
+      // lưu dự phòng:
+      try {
+        localStorage.setItem("devices", JSON.stringify(data));
+      } catch (e) {
+        console.warn("localStorage set failed:", e);
+        try {
+          sessionStorage.setItem("devices", JSON.stringify(data));
+        } catch (e2) {
+          console.warn("sessionStorage set failed:", e2);
+          // fallback lưu chỉ record hiện tại
+          try {
+            localStorage.setItem("devices_fallback", JSON.stringify([row || {}]));
+          } catch (e3) {
+            console.error("Không thể lưu vào storage nào cả:", e3);
+          }
+        }
+      }
+
+      const bbuExists = await checkBbuAvailable();
+      if (!bbuExists) {
+        alert("Không tìm thấy bbu.html hoặc không thể fetch bbu.html. Kiểm tra:\n- bbu.html có nằm cùng thư mục không?\n- tên file đúng chính tả (viết hoa/thường)?\n- đang chạy bằng HTTP server (khuyến nghị) hay file:// ?\n\n(Chi tiết xem console)");
+        return;
+      }
+
+      // chuyển trang
+      window.location.href = "bbu.html?label=" + encodeURIComponent(userLabel);
+    }
+
+    // gắn event cho nút
+    btnSerial.addEventListener('click', searchSerial);
+    btnUser.addEventListener('click', searchUser);
+    btnShowAll.addEventListener('click', showAll);
+
+    // tải dữ liệu khi mở trang
     loadData();
   </script>
 </body>
