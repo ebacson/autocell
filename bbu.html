@@ -1,72 +1,102 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<title>Sơ đồ BBU</title>
-<style>
-  body { font-family: Arial; text-align: center; }
-  .bbu { display: inline-block; border: 2px solid #333; padding: 10px; margin-top: 20px; }
-  .slot { border: 1px solid #999; margin: 2px; padding: 10px; min-width: 80px; }
-  .row { display: flex; justify-content: center; }
-  .rru { display: inline-block; margin: 10px; border: 1px solid #666; padding: 10px; }
-  .highlight { background: yellow; font-weight: bold; }
-</style>
+  <meta charset="UTF-8">
+  <title>Sơ đồ BBU</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+    h2 { text-align: center; margin-bottom: 20px; }
+    .bbu-container {
+      display: flex;
+      flex-wrap: wrap;
+      width: 600px;
+      margin: 0 auto;
+      border: 3px solid #333;
+      border-radius: 10px;
+      padding: 10px;
+      background: white;
+    }
+    .slot {
+      flex: 1 0 30%;
+      margin: 5px;
+      padding: 10px;
+      border: 2px solid #007bff;
+      border-radius: 6px;
+      text-align: center;
+      background: #e9f3ff;
+      font-size: 14px;
+    }
+    .highlight {
+      background: #ffeb3b !important;
+      border-color: #ff9800 !important;
+      font-weight: bold;
+    }
+    .rru-container {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .rru {
+      display: inline-block;
+      padding: 8px 12px;
+      margin: 5px;
+      border: 2px solid #4caf50;
+      border-radius: 6px;
+      background: #e8f5e9;
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
-<h2>Sơ đồ BBU cho <span id="label"></span></h2>
+  <h2>📡 Sơ đồ BBU 8200</h2>
+  <div class="bbu-container" id="bbu"></div>
+  <div class="rru-container" id="rrus"></div>
 
-<div id="bbu" class="bbu"></div>
-
-<h3>RRU</h3>
-<div id="rru-list"></div>
-
-<script>
-// Lấy UserLabel từ URL
-const urlParams = new URLSearchParams(window.location.search);
-const label = urlParams.get("label");
-document.getElementById("label").innerText = label;
-
-// Lấy dữ liệu từ localStorage
-let devices = JSON.parse(localStorage.getItem("devices") || "[]");
-
-// --- Tạo sơ đồ BBU ---
-const slots = ["PM", "FS", "BPN2", "PM", "BPN2", "SA", "CCC", "BPK_d"];
-const bbuDiv = document.getElementById("bbu");
-
-// Vẽ slot
-for (let i = 0; i < slots.length; i += 3) {
-  let row = document.createElement("div");
-  row.className = "row";
-
-  for (let j = 0; j < 3; j++) {
-    if (i + j < slots.length) {
-      let slotName = slots[i + j];
-      let div = document.createElement("div");
-      div.className = "slot";
-      div.textContent = slotName;
-
-      // highlight nếu có cùng UserLabel
-      let match = devices.find(d => d.userLabel === label && d.type === slotName);
-      if (match) {
-        div.classList.add("highlight");
-      }
-      row.appendChild(div);
+  <script>
+    function getParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
     }
-  }
 
-  bbuDiv.appendChild(row);
-}
+    function renderBBU(devices, highlightLabel) {
+      const bbuSlots = ["PM", "SA", "FS", "CCC", "BPN2", "BPK_d"];
+      const container = document.getElementById("bbu");
 
-// --- Vẽ danh sách RRU ---
-const rruDiv = document.getElementById("rru-list");
-devices.filter(d => d.category === "RRU").forEach(d => {
-  let div = document.createElement("div");
-  div.className = "rru";
-  if (d.userLabel === label) div.classList.add("highlight");
-  div.textContent = d.userLabel;
-  rruDiv.appendChild(div);
-});
-</script>
+      bbuSlots.forEach(slot => {
+        // tìm thiết bị trong slot này
+        const match = devices.find(d => String(d["Unit Position"] || "").includes(slot));
+        const div = document.createElement("div");
+        div.className = "slot";
+        div.innerText = match ? (match["User Label"] || slot) : slot;
 
+        if (match && match["User Label"] === highlightLabel) {
+          div.classList.add("highlight");
+        }
+        container.appendChild(div);
+      });
+
+      // gom tất cả RRU (ví dụ: S1, S2, S3, 51, 52…)
+      const rruDiv = document.getElementById("rrus");
+      const rrulist = devices.filter(d => 
+        /S\d+|\d{2}/.test(d["User Label"] || "")
+      );
+      if (rrulist.length) {
+        rruDiv.innerHTML = "<h3>RRUs</h3>";
+        rrulist.forEach(r => {
+          const el = document.createElement("div");
+          el.className = "rru";
+          el.innerText = r["User Label"];
+          if (r["User Label"] === highlightLabel) {
+            el.classList.add("highlight");
+          }
+          rruDiv.appendChild(el);
+        });
+      }
+    }
+
+    // === MAIN ===
+    const devices = JSON.parse(localStorage.getItem("devices") || "[]");
+    const label = getParam("label");
+    renderBBU(devices, label);
+  </script>
 </body>
 </html>
