@@ -36,8 +36,14 @@
       font-weight: bold;
     }
     .rru-container {
-      margin-top: 20px;
+      margin-top: 30px;
       text-align: center;
+    }
+    .rru-sector {
+      margin-bottom: 15px;
+    }
+    .rru-sector h4 {
+      margin: 5px 0;
     }
     .rru {
       display: inline-block;
@@ -83,10 +89,10 @@
 
     function renderBBU(allDevices, highlightDevices) {
       const slotLayout = [
-        ["14", "13", "SA"], // cột 1
+        ["14", "13", "SA"],   // cột 1
         ["4", "3", "2", "1"], // cột 2
         ["8", "7", "6", "5"], // cột 3
-        ["FAN"] // cột 4
+        ["FAN"]               // cột 4
       ];
 
       const container = document.getElementById("bbu");
@@ -110,21 +116,37 @@
       const rruDiv = document.getElementById("rrus");
       rruDiv.innerHTML = "";
 
-      // lọc đúng RRU
-      const rrus = allDevices.filter(d => (d["Inventory Unit Type"] || "").toUpperCase() === "RRU");
+      // chỉ lấy RRU của đúng User Label
+      const rrus = allDevices.filter(d =>
+        (d["Inventory Unit Type"] || "").toUpperCase() === "RRU" &&
+        String(d["User Label"] || "").trim() === label
+      );
 
-      if (rrus.length) {
-        rruDiv.innerHTML = "<h3>RRUs</h3>";
-        rrus.forEach(r => {
+      if (!rrus.length) return;
+
+      // gom nhóm theo sector (S1, S2, S3...) nếu có
+      const sectors = {};
+      rrus.forEach(r => {
+        const label = r["User Label"] || "";
+        const sectorMatch = label.match(/S\d+/i);
+        const sector = sectorMatch ? sectorMatch[0].toUpperCase() : "Khác";
+        if (!sectors[sector]) sectors[sector] = [];
+        sectors[sector].push(r);
+      });
+
+      rruDiv.innerHTML = "<h3>RRUs</h3>";
+      Object.keys(sectors).forEach(sec => {
+        const secDiv = document.createElement("div");
+        secDiv.className = "rru-sector";
+        secDiv.innerHTML = `<h4>${sec}</h4>`;
+        sectors[sec].forEach(r => {
           const el = document.createElement("div");
-          el.className = "rru";
+          el.className = "rru highlight";
           el.innerText = (r["User Label"] || "RRU") + " (" + (r["Unit Position"] || "") + ")";
-          if (String(r["User Label"] || "").trim() === label) {
-            el.classList.add("highlight");
-          }
-          rruDiv.appendChild(el);
+          secDiv.appendChild(el);
         });
-      }
+        rruDiv.appendChild(secDiv);
+      });
     }
 
     function renderTable(rows) {
