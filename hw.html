@@ -54,6 +54,7 @@
         const sheet = wb.Sheets[wb.SheetNames[0]];
         data = XLSX.utils.sheet_to_json(sheet);
 
+        console.log("✅ Dữ liệu:", data);
         alert("✅ Đã tải dữ liệu, có " + data.length + " bản ghi");
       } catch (e) {
         alert("❌ Lỗi: " + e.message);
@@ -65,39 +66,46 @@
         document.getElementById("result").innerHTML = "<p>Không tìm thấy dữ liệu</p>";
         return;
       }
-      let table = "<table><tr>";
-      columns.forEach(c => table += `<th>${c}</th>`);
-      table += "</tr>";
 
-      rows.forEach((r, i) => {
-        table += `<tr onclick="openBBU('${r["User Label"] || ""}')">`;
-        columns.forEach(c => table += `<td>${r[c] ?? ""}</td>`);
-        table += "</tr>`;
+      let table = "<table><thead><tr>";
+      columns.forEach(c => table += `<th>${c}</th>`);
+      table += "</tr></thead><tbody>";
+
+      rows.forEach(r => {
+        const userLabel = r["User Label"] || "";
+        table += `<tr onclick="openBBU('${userLabel.replace(/'/g, "\\'")}')">`;
+        columns.forEach(c => {
+          table += `<td>${r[c] ?? ""}</td>`;
+        });
+        table += "</tr>";
       });
-      table += "</table>";
+
+      table += "</tbody></table>";
       document.getElementById("result").innerHTML = table;
     }
 
     function searchSerial() {
       const val = document.getElementById("serialInput").value.trim();
-      const result = data.filter(r => String(r["Serial Number"]) === val);
+      if (!val) return alert("⚠️ Nhập Serial trước");
+      const result = data.filter(r => String(r["Serial Number"]).trim() === val);
       renderTable(result);
     }
 
     function searchUser() {
       const val = document.getElementById("userInput").value.trim().toLowerCase();
+      if (!val) return alert("⚠️ Nhập User Label trước");
       const result = data.filter(r => String(r["User Label"] || "").toLowerCase().includes(val));
       renderTable(result);
     }
 
     function showAll() {
-      renderTable(data.slice(0, 200)); // Giới hạn 200 dòng cho nhẹ
+      renderTable(data.slice(0, 200)); // Giới hạn 200 dòng
     }
 
     function openBBU(userLabel) {
-      // Lưu toàn bộ data để bbu.html có thể đọc
+      // Lưu toàn bộ data
       localStorage.setItem("devices", JSON.stringify(data));
-      // Mở bbu.html
+      // Mở bbu.html với User Label
       window.open("bbu.html?label=" + encodeURIComponent(userLabel), "_blank", "width=900,height=600");
     }
 
