@@ -96,7 +96,6 @@
       return url.searchParams.get(name);
     }
 
-    // Hàm tách Rack / Shelf / Slot
     function parseUnitPosition(unitPos) {
       const obj = {rack: "", shelf: "", slot: ""};
       if (!unitPos) return obj;
@@ -107,7 +106,13 @@
       return obj;
     }
 
-    function renderBBU(allDevices, highlightDevices) {
+    function renderBBU(allDevices, label) {
+      // Lọc thiết bị của User Label và Rack=1
+      const devices = allDevices.filter(d =>
+        String(d["User Label"] || "").trim() === label &&
+        parseUnitPosition(d["Unit Position"]).rack === "1"
+      );
+
       const slotColumns = [
         ["14", "13", "SA"],   // cột 1
         ["4", "3", "2", "1"], // cột 2
@@ -123,9 +128,9 @@
         colDiv.className = "column";
 
         col.forEach(slot => {
-          const matches = allDevices.filter(d => {
+          const matches = devices.filter(d => {
             const pos = parseUnitPosition(d["Unit Position"]);
-            return pos.rack === "1" && pos.slot.toUpperCase() === slot.toUpperCase();
+            return pos.slot.toUpperCase() === slot.toUpperCase();
           });
 
           const div = document.createElement("div");
@@ -140,9 +145,7 @@ ${m["Vendor Unit Type Name"] || ""}
 SN: ${m["Serial Number"] || ""}`;
             }).join("\n\n");
 
-            if (matches.some(m => highlightDevices.includes(m))) {
-              div.classList.add("highlight");
-            }
+            div.classList.add("highlight");
           } else {
             div.innerText = slot;
           }
@@ -192,7 +195,8 @@ SN: ${r["Serial Number"] || ""}`;
       });
     }
 
-    function renderTable(rows) {
+    function renderTable(allDevices, label) {
+      const rows = allDevices.filter(d => String(d["User Label"] || "").trim() === label);
       if (!rows.length) {
         document.getElementById("deviceTable").innerHTML = "<p>Không có thiết bị nào</p>";
         return;
@@ -225,11 +229,9 @@ SN: ${r["Serial Number"] || ""}`;
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(sheet);
 
-        const highlightDevices = data.filter(d => String(d["User Label"] || "").trim() === label);
-
-        renderBBU(data, highlightDevices);
+        renderBBU(data, label);
         renderRRUs(data, label);
-        renderTable(highlightDevices);
+        renderTable(data, label);
       } catch (e) {
         document.body.innerHTML += "<p style='color:red'>❌ Lỗi: " + e.message + "</p>";
       }
