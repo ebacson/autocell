@@ -7,16 +7,22 @@
   <style>
     body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
     h2 { text-align: center; margin-bottom: 20px; }
-    .bbu-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      max-width: 800px;
+    .bbu-layout {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      max-width: 900px;
       margin: 0 auto;
-      padding: 15px;
+      padding: 20px;
       border: 3px solid #333;
       border-radius: 10px;
       background: white;
+    }
+    .column {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
     }
     .slot {
       border: 2px solid #007bff;
@@ -25,6 +31,7 @@
       background: #e9f3ff;
       font-size: 14px;
       padding: 15px 5px;
+      min-width: 100px;
       min-height: 60px;
       display: flex;
       align-items: center;
@@ -77,7 +84,7 @@
 </head>
 <body>
   <h2>📡 Sơ đồ BBU 8200</h2>
-  <div class="bbu-grid" id="bbu"></div>
+  <div class="bbu-layout" id="bbu"></div>
   <div class="rru-container" id="rrus"></div>
   <div id="deviceTable"></div>
 
@@ -88,7 +95,7 @@
     }
 
     function renderBBU(allDevices, highlightDevices) {
-      const slotLayout = [
+      const slotColumns = [
         ["14", "13", "SA"],   // cột 1
         ["4", "3", "2", "1"], // cột 2
         ["8", "7", "6", "5"], // cột 3
@@ -98,17 +105,22 @@
       const container = document.getElementById("bbu");
       container.innerHTML = "";
 
-      slotLayout.forEach(col => {
+      slotColumns.forEach(col => {
+        const colDiv = document.createElement("div");
+        colDiv.className = "column";
+
         col.forEach(slot => {
           const match = highlightDevices.find(
-            d => String(d["Unit Position"] || "").includes(slot)
+            d => String(d["Unit Position"] || "").toUpperCase().includes(slot.toUpperCase())
           );
           const div = document.createElement("div");
           div.className = "slot";
           div.innerText = match ? (match["Unit Position"] + " - " + match["User Label"]) : slot;
           if (match) div.classList.add("highlight");
-          container.appendChild(div);
+          colDiv.appendChild(div);
         });
+
+        container.appendChild(colDiv);
       });
     }
 
@@ -116,7 +128,6 @@
       const rruDiv = document.getElementById("rrus");
       rruDiv.innerHTML = "";
 
-      // chỉ lấy RRU của đúng User Label
       const rrus = allDevices.filter(d =>
         (d["Inventory Unit Type"] || "").toUpperCase() === "RRU" &&
         String(d["User Label"] || "").trim() === label
@@ -124,11 +135,10 @@
 
       if (!rrus.length) return;
 
-      // gom nhóm theo sector (S1, S2, S3...) nếu có
       const sectors = {};
       rrus.forEach(r => {
-        const label = r["User Label"] || "";
-        const sectorMatch = label.match(/S\d+/i);
+        const ul = r["User Label"] || "";
+        const sectorMatch = ul.match(/S\d+/i);
         const sector = sectorMatch ? sectorMatch[0].toUpperCase() : "Khác";
         if (!sectors[sector]) sectors[sector] = [];
         sectors[sector].push(r);
@@ -170,7 +180,6 @@
       document.getElementById("deviceTable").innerHTML = html;
     }
 
-    // === MAIN ===
     const label = getParam("label");
 
     async function loadData() {
