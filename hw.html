@@ -2,81 +2,145 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Tra cứu thiết bị</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <title>Tra cứu Inventory</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 10px; }
-    input, button { margin: 5px 0; padding: 8px; width: 100%; font-size: 16px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; font-size: 14px; }
-    tr:nth-child(even) { background: #f9f9f9; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 10px;
+      background: #f5f5f5;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .search-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    input {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: 100%;
+    }
+    button {
+      padding: 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 6px;
+      overflow: hidden;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+      word-break: break-word;
+    }
+    th {
+      background: #007bff;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    .table-container {
+      overflow-x: auto;
+      max-height: 70vh;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
   </style>
 </head>
 <body>
-  <h2>🔍 Tra cứu thiết bị</h2>
-  <input id="serialInput" placeholder="Nhập Serial Number (tìm chính xác)">
-  <button onclick="searchSerial()">Tìm theo Serial</button>
-  
-  <input id="userInput" placeholder="Nhập Tên, Mã Trạm (tìm gần đúng)">
-  <button onclick="searchUser()">Tìm theo Tên Trạm</button>
 
-  <button onclick="showAll()">Hiện tất cả</button>
+  <h2>📋 Tra cứu Inventory</h2>
 
-  <div id="result"></div>
+  <div class="search-box">
+    <input type="text" id="searchSerial" placeholder="Tìm theo Serial Number (chính xác)">
+    <input type="text" id="searchUser" placeholder="Tìm theo User Label (có chứa)">
+    <button onclick="showAll()">Hiện tất cả</button>
+  </div>
+
+  <div class="table-container">
+    <table id="resultTable">
+      <thead>
+        <tr>
+          <th>User Label</th>
+          <th>Inventory Unit Type</th>
+          <th>Vendor Unit Family Type</th>
+          <th>Vendor Unit Type Name</th>
+          <th>Serial Number</th>
+          <th>Unit Position</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 
   <script>
     let data = [];
 
-    async function loadData() {
-      try {
-        const response = await fetch("inventory.xlsx");
-        if (!response.ok) throw new Error("Không tìm thấy file inventory.xlsx");
-
-        const buf = await response.arrayBuffer();
-        const wb = XLSX.read(buf, { type: "array" });
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        data = XLSX.utils.sheet_to_json(sheet);
-
-        alert("✅ Đã tải thành công dữ liệu, có " + data.length + " bản ghi");
-      } catch (e) {
-        alert("❌ Lỗi: " + e.message);
-      }
-    }
+    // Load file Excel (đã chuyển sang JSON trước đó bằng python/pandas)
+    fetch('inventory.json')
+      .then(res => res.json())
+      .then(json => { data = json; });
 
     function renderTable(rows) {
-      if (!rows.length) {
-        document.getElementById("result").innerHTML = "<p>Không tìm thấy dữ liệu</p>";
-        return;
-      }
-      let table = "<table><tr>";
-      Object.keys(rows[0]).forEach(k => table += `<th>${k}</th>`);
-      table += "</tr>";
-      rows.forEach(r => {
-        table += "<tr>";
-        Object.values(r).forEach(v => table += `<td>${v ?? ""}</td>`);
-        table += "</tr>";
+      const tbody = document.querySelector("#resultTable tbody");
+      tbody.innerHTML = "";
+      rows.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row["User Label"] || ""}</td>
+          <td>${row["Inventory Unit Type"] || ""}</td>
+          <td>${row["Vendor Unit Family Type"] || ""}</td>
+          <td>${row["Vendor Unit Type Name"] || ""}</td>
+          <td>${row["Serial Number"] || ""}</td>
+          <td>${row["Unit Position"] || ""}</td>
+        `;
+        tbody.appendChild(tr);
       });
-      table += "</table>";
-      document.getElementById("result").innerHTML = table;
     }
 
-    function searchSerial() {
-      const val = document.getElementById("serialInput").value.trim();
-      const result = data.filter(r => String(r["Serial Number"]) === val);
-      renderTable(result);
-    }
+    document.getElementById("searchSerial").addEventListener("input", function() {
+      const value = this.value.trim();
+      if (!value) return;
+      const results = data.filter(item => item["Serial Number"] === value);
+      renderTable(results);
+    });
 
-    function searchUser() {
-      const val = document.getElementById("userInput").value.trim().toLowerCase();
-      const result = data.filter(r => String(r["User Label"] || "").toLowerCase().includes(val));
-      renderTable(result);
-    }
+    document.getElementById("searchUser").addEventListener("input", function() {
+      const value = this.value.trim().toLowerCase();
+      if (!value) return;
+      const results = data.filter(item => 
+        (item["User Label"] || "").toLowerCase().includes(value)
+      );
+      renderTable(results);
+    });
 
     function showAll() {
-      renderTable(data.slice(0, 200)); // giới hạn 200 dòng cho nhẹ
+      renderTable(data);
     }
-
-    loadData();
   </script>
+
 </body>
 </html>
