@@ -12,23 +12,18 @@
       grid-auto-rows: 80px;
       gap: 10px;
       justify-content: center;
-      margin: 0 auto;
-      background: white;
-      border: 3px solid #333;
-      border-radius: 10px;
-      padding: 15px;
-      width: max-content;
+      margin-bottom: 30px;
     }
     .slot {
-      border: 2px solid #007bff;
-      border-radius: 6px;
-      text-align: center;
-      background: #e9f3ff;
-      font-size: 14px;
-      padding: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
+      border: 2px solid #007bff;
+      border-radius: 6px;
+      background: #e9f3ff;
+      font-size: 14px;
+      text-align: center;
+      padding: 5px;
     }
     .highlight {
       background: #ffeb3b !important;
@@ -38,25 +33,14 @@
     .rru-container {
       margin-top: 20px;
     }
-    .rru-group {
-      margin-bottom: 15px;
-      padding: 10px;
+    .rru {
+      display: inline-block;
+      padding: 8px 12px;
+      margin: 5px;
       border: 2px solid #4caf50;
       border-radius: 6px;
-      background: #f1f8e9;
-    }
-    .rru-title {
-      font-weight: bold;
-      margin-bottom: 8px;
-    }
-    .rru-item {
-      display: inline-block;
-      padding: 6px 10px;
-      margin: 3px;
-      border: 1px solid #4caf50;
-      border-radius: 4px;
       background: #e8f5e9;
-      font-size: 13px;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -72,63 +56,49 @@
     }
 
     function renderBBU(devices, highlightLabel) {
-      const layout = {
-        col1: ["14", "13", "SA"],
-        col2: ["4", "3", "2", "1"],
-        col3: ["8", "7", "6", "5"],
-        col4: ["FAN"]
-      };
+      // lọc dữ liệu theo user label và chỉ lấy pack hoặc RRU
+      const filtered = devices.filter(d =>
+        d["User Label"] === highlightLabel &&
+        (d["Inventory Unit Type"] === "pack" || d["Inventory Unit Type"] === "RRU")
+      );
+
+      // định nghĩa layout BBU (slot theo cột)
+      const slotLayout = [
+        "14", "13", "SA",
+        "4", "3", "2", "1",
+        "8", "7", "6", "5",
+        "FAN"
+      ];
 
       const container = document.getElementById("bbu");
       container.innerHTML = "";
 
-      const allSlots = [...layout.col1, ...layout.col2, ...layout.col3, ...layout.col4];
-
-      allSlots.forEach(slot => {
-        const match = devices.find(d => String(d["Unit Position"] || "").includes(slot));
+      slotLayout.forEach(slot => {
+        const match = filtered.find(d => (d["Unit Position"] || "").toString().includes(slot) && d["Inventory Unit Type"] === "pack");
         const div = document.createElement("div");
         div.className = "slot";
-        div.innerText = match ? (match["User Label"] || slot) : slot;
+        div.innerText = match ? (match["User Label"] + "\n" + match["Unit Position"]) : slot;
+
         if (match && match["User Label"] === highlightLabel) {
           div.classList.add("highlight");
         }
         container.appendChild(div);
       });
 
-      // Lấy RRU của label này
+      // hiển thị RRUs
       const rruDiv = document.getElementById("rrus");
-      rruDiv.innerHTML = "<h3>RRUs</h3>";
+      rruDiv.innerHTML = "";
+      const rrulist = filtered.filter(d => d["Inventory Unit Type"] === "RRU");
 
-      const rrulist = devices.filter(d => 
-        d["Inventory Unit Type"] === "RRU" && d["User Label"] === highlightLabel
-      );
-
-      // Gom nhóm theo User Label
-      const grouped = {};
-      rrulist.forEach(r => {
-        const lbl = r["User Label"] || "Khác";
-        if (!grouped[lbl]) grouped[lbl] = [];
-        grouped[lbl].push(r);
-      });
-
-      Object.keys(grouped).forEach(lbl => {
-        const group = document.createElement("div");
-        group.className = "rru-group";
-
-        const title = document.createElement("div");
-        title.className = "rru-title";
-        title.innerText = "User Label: " + lbl;
-        group.appendChild(title);
-
-        grouped[lbl].forEach(r => {
+      if (rrulist.length) {
+        rruDiv.innerHTML = "<h3>RRUs</h3>";
+        rrulist.forEach(r => {
           const el = document.createElement("div");
-          el.className = "rru-item";
-          el.innerText = r["Unit Position"] || "(không rõ vị trí)";
-          group.appendChild(el);
+          el.className = "rru";
+          el.innerText = `${r["User Label"]} (${r["Unit Position"] || ""})`;
+          rruDiv.appendChild(el);
         });
-
-        rruDiv.appendChild(group);
-      });
+      }
     }
 
     // === MAIN ===
