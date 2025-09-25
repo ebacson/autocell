@@ -96,6 +96,17 @@
       return url.searchParams.get(name);
     }
 
+    // Hàm tách Rack / Shelf / Slot
+    function parseUnitPosition(unitPos) {
+      const obj = {rack: "", shelf: "", slot: ""};
+      if (!unitPos) return obj;
+      unitPos.split(",").forEach(p => {
+        const [key, value] = p.split("=");
+        if (key && value) obj[key.trim().toLowerCase()] = value.trim();
+      });
+      return obj;
+    }
+
     function renderBBU(allDevices, highlightDevices) {
       const slotColumns = [
         ["14", "13", "SA"],   // cột 1
@@ -112,17 +123,18 @@
         colDiv.className = "column";
 
         col.forEach(slot => {
-          const matches = allDevices.filter(d =>
-            String(d["Rack"] || "").trim() === "1" &&
-            String(d["Unit Position"] || "").toUpperCase().includes(slot.toUpperCase())
-          );
+          const matches = allDevices.filter(d => {
+            const pos = parseUnitPosition(d["Unit Position"]);
+            return pos.rack === "1" && pos.slot.toUpperCase() === slot.toUpperCase();
+          });
 
           const div = document.createElement("div");
           div.className = "slot";
 
           if (matches.length) {
             div.innerHTML = matches.map(m => {
-              return `${m["Unit Position"] || slot}
+              const pos = parseUnitPosition(m["Unit Position"]);
+              return `Rack=${pos.rack} Slot=${pos.slot}
 ${m["User Label"] || ""}
 ${m["Vendor Unit Type Name"] || ""}
 SN: ${m["Serial Number"] || ""}`;
@@ -168,9 +180,12 @@ SN: ${m["Serial Number"] || ""}`;
         secDiv.className = "rru-sector";
         secDiv.innerHTML = `<h4>${sec}</h4>`;
         sectors[sec].forEach(r => {
+          const pos = parseUnitPosition(r["Unit Position"]);
           const el = document.createElement("div");
           el.className = "rru highlight";
-          el.innerText = `${r["User Label"] || "RRU"} (${r["Unit Position"] || ""})\n${r["Vendor Unit Type Name"] || ""}\nSN: ${r["Serial Number"] || ""}`;
+          el.innerText = `${r["User Label"] || "RRU"} (Rack=${pos.rack} Slot=${pos.slot})
+${r["Vendor Unit Type Name"] || ""}
+SN: ${r["Serial Number"] || ""}`;
           secDiv.appendChild(el);
         });
         rruDiv.appendChild(secDiv);
