@@ -2,203 +2,138 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>📡 Sơ đồ BBU 8200</title>
+  <title>BBU & RRU Layout</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      padding: 20px;
-      text-align: center;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    h2 {
-      margin-bottom: 12px;
+    h2 { margin: 5px 0; }
+    .container {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0;
     }
-
-    /* Bao ngoài để scale */
-    .scale-container {
-      width: 100%;
-      overflow-x: auto;
-      text-align: center;
-    }
-
-    /* Khung BBU cố định 4:1 */
-    .bbu {
+    .fixed-box {
+      aspect-ratio: 4 / 1;
+      width: 90vw;
+      max-width: 1000px;
+      border: 3px solid #000;
       display: grid;
-      grid-template-columns: 1fr 2fr 2fr 1fr;
+      grid-template-columns: repeat(4, 1fr);
       grid-template-rows: repeat(4, 1fr);
-      gap: 8px;
-      width: 800px;   /* cố định */
-      height: 200px;  /* 1/4 của width */
-      margin: 0 auto 20px;
-      background: #fff;
-      padding: 18px;
-      border: 3px solid #333;
-      border-radius: 10px;
       box-sizing: border-box;
     }
-
     .slot {
-      border: 2px solid #007bff;
-      border-radius: 6px;
-      background: #e9f3ff;
-      font-size: 13px;
+      border: 1px solid #999;
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-direction: column;
-      white-space: pre-line;
-      overflow: hidden;
-      padding: 6px;
+      text-align: center;
+      font-size: 0.7em; /* nhỏ hơn để vừa dữ liệu */
+      padding: 2px;
       box-sizing: border-box;
     }
-
-    .slot .slot-content {
-      width: 100%;
-      text-align: center;
-    }
-
-    /* Slot 16 hiển thị hẹp hơn */
-    .slot.s16 .slot-content {
-      width: 50%;
-      margin: 0 auto;
-    }
-
-    .highlight {
-      background: #ffeb3b !important;
-      border-color: #ff9800 !important;
+    .slot-title {
       font-weight: bold;
-    }
-
-    /* Scale trên mobile thay vì đổi layout */
-    @media (max-width: 900px) {
-      .bbu { transform: scale(0.8); transform-origin: top center; }
-    }
-    @media (max-width: 600px) {
-      .bbu { transform: scale(0.6); transform-origin: top center; }
-    }
-
-    /* Khung RRU giả lập */
-    .rru {
-      width: 800px;
-      margin: 20px auto;
-      border: 2px dashed #666;
-      padding: 10px;
-      background: #fff;
+      margin-bottom: 2px;
     }
   </style>
 </head>
 <body>
-  <h2>📡 Sơ đồ BBU 8200</h2>
-  <div class="scale-container">
-    <div id="bbu" class="bbu" aria-label="BBU layout"></div>
-    <div id="rru" class="rru">📶 Khu vực hiển thị RRU (placeholder)</div>
+  <h2>BBU Layout</h2>
+  <div class="container">
+    <div id="bbu" class="fixed-box"></div>
+  </div>
+
+  <h2>RRU Layout</h2>
+  <div class="container">
+    <div id="rru" class="fixed-box"></div>
   </div>
 
   <script>
-    function getParam(name) {
-      try {
-        const url = new URL(window.location.href);
-        return url.searchParams.get(name);
-      } catch (e) { return null; }
+    async function loadExcel() {
+      const response = await fetch("inventory.xlsx");
+      const arrayBuffer = await response.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(sheet, { defval: "" });
     }
 
-    function parseUnitPosition(unitPos) {
-      const obj = { rack: "", shelf: "", slot: "" };
-      if (!unitPos) return obj;
-      unitPos.split(',').forEach(p => {
-        const parts = p.split('=');
-        if (parts.length >= 2) {
-          const key = parts[0].trim().toLowerCase();
-          const value = parts.slice(1).join('=').trim();
-          if (key && value) obj[key] = value;
-        }
-      });
-      return obj;
-    }
+    function renderBBU(data) {
+      const container = document.getElementById("bbu");
+      container.innerHTML = "";
 
-    // vị trí slot trong grid
-    const slotPositions = {
-      '13': { col: 1, row: 1 },
-      '14': { col: 1, row: 2, rowspan: 2 },
-      '15': { col: 1, row: 4, rowspan: 2 },
-      '1':  { col: 2, row: 1 },
-      '2':  { col: 2, row: 2 },
-      '3':  { col: 2, row: 3 },
-      '4':  { col: 2, row: 4 },
-      '5':  { col: 3, row: 1 },
-      '6':  { col: 3, row: 2 },
-      '7':  { col: 3, row: 3 },
-      '8':  { col: 3, row: 4 },
-      '16': { col: 4, row: 1, rowspan: 4 }
-    };
+      const slotOrder = {
+        col1: [15, 14, 13],
+        col2: [1, 2, 3, 4],
+        col3: [5, 6, 7, 8],
+        col4: [16]
+      };
 
-    function renderBBU(allDevices, label) {
-      const devices = allDevices.filter(d =>
-        String(d['User Label'] || '').trim() === label &&
-        parseUnitPosition(d['Unit Position']).rack === '1'
-      );
+      const grid = [];
+      for (let c = 1; c <= 4; c++) {
+        slotOrder[`col${c}`].forEach(s => grid.push({ slot: s, col: c }));
+      }
 
-      const container = document.getElementById('bbu');
-      container.innerHTML = '';
+      grid.forEach(item => {
+        const slotData = data.find(d => d.Type === "BBU" && d.Slot == item.slot);
+        const slotDiv = document.createElement("div");
+        slotDiv.className = "slot";
 
-      Object.keys(slotPositions).forEach(slotKey => {
-        const pos = slotPositions[slotKey];
-        const wrapper = document.createElement('div');
-        wrapper.className = `slot s${slotKey}`;
-        wrapper.style.gridColumnStart = pos.col;
-        wrapper.style.gridRowStart = pos.row;
-        if (pos.rowspan) wrapper.style.gridRowEnd = `span ${pos.rowspan}`;
-
-        const content = document.createElement('div');
-        content.className = 'slot-content';
-
-        const matches = devices.filter(d => {
-          const up = parseUnitPosition(d['Unit Position']);
-          return String(up.slot) === String(slotKey);
-        });
-
-        if (matches.length) {
-          const m = matches[0];
-          content.innerText =
-            `Rack=1 Slot=${slotKey}\n${m['Vendor Unit Type Name'] || ''}\nSN: ${m['Serial Number'] || ''}`;
-          wrapper.classList.add('highlight');
+        if (slotData) {
+          slotDiv.innerHTML = `<div class="slot-title">Slot ${item.slot}</div>
+                               <div>${slotData["User Label"]}</div>`;
         } else {
-          content.innerText = `Slot ${slotKey} : empty`;
+          slotDiv.innerHTML = `<div class="slot-title">Slot ${item.slot}</div>`;
         }
 
-        wrapper.appendChild(content);
-        container.appendChild(wrapper);
+        container.appendChild(slotDiv);
       });
     }
 
-    async function loadData() {
-      const label = getParam('label') || '';
-      if (!label) {
-        document.body.insertAdjacentHTML('beforeend',
-          '<p style="color:orange">⚠️ Vui lòng cung cấp param ?label=NAME trong URL để lọc theo User Label.</p>'
-        );
-      }
-      try {
-        const resp = await fetch('inventory.xlsx');
-        if (!resp.ok) throw new Error('Không tìm thấy file inventory.xlsx (đặt cùng thư mục với bbu.html)');
-        const buf = await resp.arrayBuffer();
-        const wb = XLSX.read(buf, { type: 'array' });
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json(sheet);
-        renderBBU(data, label);
+    function renderRRU(data) {
+      const container = document.getElementById("rru");
+      container.innerHTML = "";
 
-        // TODO: render RRU nếu có dữ liệu
-        document.getElementById('rru').innerText = "📶 RRU hiển thị (sẽ render sau)";
-      } catch (err) {
-        document.body.insertAdjacentHTML('beforeend',
-          `<p style="color:red">❌ Lỗi: ${err.message}</p>`
-        );
+      // slot bố trí RRU (giống cấu trúc BBU nhưng có thể tuỳ chỉnh sau)
+      const slotOrder = {
+        col1: [15, 14, 13],
+        col2: [1, 2, 3, 4],
+        col3: [5, 6, 7, 8],
+        col4: [16]
+      };
+
+      const grid = [];
+      for (let c = 1; c <= 4; c++) {
+        slotOrder[`col${c}`].forEach(s => grid.push({ slot: s, col: c }));
       }
+
+      grid.forEach(item => {
+        const slotData = data.find(d => d.Type === "RRU" && d.Slot == item.slot);
+        const slotDiv = document.createElement("div");
+        slotDiv.className = "slot";
+
+        if (slotData) {
+          slotDiv.innerHTML = `<div class="slot-title">Slot ${item.slot}</div>
+                               <div>${slotData["User Label"]}</div>
+                               <div>${slotData["Device"] || ""}</div>`;
+        } else {
+          slotDiv.innerHTML = `<div class="slot-title">Slot ${item.slot}</div>`;
+        }
+
+        container.appendChild(slotDiv);
+      });
     }
 
-    loadData();
+    loadExcel().then(data => {
+      renderBBU(data);
+      renderRRU(data);
+    });
   </script>
 </body>
 </html>
