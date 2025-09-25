@@ -23,7 +23,6 @@
       flex-direction: column;
       gap: 10px;
       align-items: center;
-      min-height: 400px; /* Đảm bảo tất cả cột có cùng chiều cao */
     }
     .slot {
       border: 2px solid #007bff;
@@ -41,10 +40,10 @@
       white-space: pre-line;
     }
     .slot.s14, .slot.s15 {
-      min-height: 120px; /* 1.5 lần chiều cao bình thường (80px * 1.5 = 120px) */
+      min-height: 125px; /* Tăng từ 120px lên 125px để cân bằng với cột 2,3 */
     }
     .slot.s16 {
-      min-height: 400px; /* Chiều cao bằng chiều cao cột (400px) */
+      min-height: 350px; /* Giảm từ 400px xuống 350px để cân bằng với cột 2,3 */
     }
     .highlight {
       background: #ffeb3b !important;
@@ -249,5 +248,3 @@ SN: ${r["Serial Number"] || ""}`;
   </script>
 </body>
 </html>
-
-
