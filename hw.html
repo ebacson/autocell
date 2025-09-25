@@ -55,7 +55,6 @@
         data = XLSX.utils.sheet_to_json(sheet);
 
         console.log("✅ Dữ liệu:", data);
-        alert("✅ Đã tải dữ liệu, có " + data.length + " bản ghi");
       } catch (e) {
         alert("❌ Lỗi: " + e.message);
       }
@@ -105,8 +104,8 @@
     function openBBU(userLabel) {
       // Lưu toàn bộ data
       localStorage.setItem("devices", JSON.stringify(data));
-      // Mở bbu.html với User Label
-      window.open("bbu.html?label=" + encodeURIComponent(userLabel), "_blank", "width=900,height=600");
+      // Chuyển sang bbu.html trong cùng cửa sổ
+      window.location.href = "bbu.html?label=" + encodeURIComponent(userLabel);
     }
 
     loadData();
