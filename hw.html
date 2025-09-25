@@ -14,6 +14,7 @@
     th, td { border: 1px solid #ccc; padding: 6px; text-align: left; word-break: break-word; }
     th { background: #007bff; color: white; position: sticky; top: 0; }
     tr:nth-child(even) { background: #f9f9f9; }
+    tr:hover { background: #ffe599; cursor: pointer; }
     .table-container { overflow-x: auto; max-height: 70vh; }
   </style>
 </head>
@@ -34,6 +35,14 @@
 
   <script>
     let data = [];
+    const columns = [
+      "User Label",
+      "Inventory Unit Type",
+      "Vendor Unit Family Type",
+      "Vendor Unit Type Name",
+      "Serial Number",
+      "Unit Position"
+    ];
 
     async function loadData() {
       try {
@@ -57,21 +66,13 @@
         return;
       }
       let table = "<table><tr>";
-      const columns = [
-        "User Label",
-        "Inventory Unit Type",
-        "Vendor Unit Family Type",
-        "Vendor Unit Type Name",
-        "Serial Number",
-        "Unit Position"
-      ];
       columns.forEach(c => table += `<th>${c}</th>`);
       table += "</tr>";
 
-      rows.forEach(r => {
-        table += "<tr>";
+      rows.forEach((r, i) => {
+        table += `<tr onclick="openBBU('${r["User Label"] || ""}')">`;
         columns.forEach(c => table += `<td>${r[c] ?? ""}</td>`);
-        table += "</tr>";
+        table += "</tr>`;
       });
       table += "</table>";
       document.getElementById("result").innerHTML = table;
@@ -91,6 +92,13 @@
 
     function showAll() {
       renderTable(data.slice(0, 200)); // Giới hạn 200 dòng cho nhẹ
+    }
+
+    function openBBU(userLabel) {
+      // Lưu toàn bộ data để bbu.html có thể đọc
+      localStorage.setItem("devices", JSON.stringify(data));
+      // Mở bbu.html
+      window.open("bbu.html?label=" + encodeURIComponent(userLabel), "_blank", "width=900,height=600");
     }
 
     loadData();
