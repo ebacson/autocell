@@ -1,68 +1,387 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ZXRAN V9200 - BBU Slot Layout (3 cột)</title>
+  <meta charset="UTF-8">
+  <title>Sơ đồ BBU 8200</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-    body{font-family: Inter, Arial, sans-serif;background:#f4f6f8;padding:20px}
-    .chassis{max-width:900px;margin:0 auto;background:#fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.08);padding:18px}
-    h1{font-size:20px;margin:0 0 12px}
-    .frame{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;border:2px solid #d6dbe0;border-radius:8px;padding:14px;background:#fafafa}
-
-    .col{border:1px solid #d3d9df;border-radius:8px;padding:10px;background:#ffffff;display:grid;gap:10px;min-height:320px;position:relative}
-    .col-title{font-weight:700;margin-bottom:6px;text-align:center}
-
-    .slot{background:#f0f0f0;border:1px dashed #bbb;border-radius:6px;padding:12px;text-align:center;font-weight:700;display:flex;justify-content:center;align-items:center;flex-direction:column;color:#888}
-
-    .col-1{grid-template-rows:repeat(4,1fr)}
-    .col-2{grid-template-rows:repeat(4,1fr)}
-    .col-3{display:flex;align-items:center;justify-content:center}
-
-    @media (max-width:880px){
-      .frame{grid-template-columns:1fr}
-      .col{min-height:auto}
+    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+    h2 { text-align: center; margin-bottom: 20px; }
+    .bbu-layout {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      border: 3px solid #333;
+      border-radius: 10px;
+      background: white;
     }
+    .column:nth-child(1) {
+      width: 150px; /* Cột 1: 150px */
+    }
+    .column:nth-child(2), .column:nth-child(3) {
+      width: 300px; /* Cột 2,3: 300px */
+    }
+    .column:nth-child(4) {
+      width: 80px; /* Cột 4: 80px */
+    }
+    
+    /* Layout cho ZXRAN V9200 - 3 cột */
+    .bbu-layout.v9200 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 18px;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 18px;
+      border: 2px solid #d6dbe0;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+    
+    .v9200 .col {
+      border: 1px solid #d3d9df;
+      border-radius: 8px;
+      padding: 10px;
+      background: #ffffff;
+      display: grid;
+      gap: 10px;
+      min-height: 320px;
+      position: relative;
+    }
+    
+    .v9200 .col-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+      text-align: center;
+      font-size: 12px;
+    }
+    
+    .v9200 .col-1 {
+      grid-template-rows: repeat(4, 1fr);
+    }
+    
+    .v9200 .col-2 {
+      grid-template-rows: repeat(4, 1fr);
+    }
+    
+    .v9200 .col-3 {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .v9200 .slot-row {
+      display: flex;
+      gap: 10px;
+    }
+    .column {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+    .slot {
+      border: 2px solid #007bff;
+      border-radius: 6px;
+      text-align: center;
+      background: #e9f3ff;
+      font-size: 10px; /* Giảm font size từ 13px xuống 10px */
+      padding: 8px 4px; /* Giảm padding để tiết kiệm không gian */
+      width: 100%; /* Slot sẽ tự động điều chỉnh theo chiều rộng cột */
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      white-space: pre-line;
+      box-sizing: border-box;
+    }
+    .slot.s13 {
+      min-height: 80px; /* Tăng chiều cao slot 13 để cột 1 = 350px (125+125+80+20=350) */
+    }
+    .slot.s14, .slot.s15 {
+      min-height: 125px; /* Giữ nguyên chiều cao slot 14, 15 */
+      background: #ffeb3b; /* Thêm màu vàng để dễ nhận biết */
+    }
+    .slot.s16 {
+      min-height: 350px; /* Tăng chiều cao slot 16 để bằng cột 2,3 */
+      background: #ff9800; /* Thêm màu cam để dễ nhận biết */
+    }
+    .highlight {
+      background: #ffeb3b !important;
+      border-color: #ff9800 !important;
+      font-weight: bold;
+    }
+    .rru-container {
+      margin-top: 30px;
+      text-align: center;
+    }
+    .rru-sector {
+      margin-bottom: 15px;
+    }
+    .rru-sector h4 {
+      margin: 5px 0;
+    }
+    .rru {
+      display: inline-block;
+      padding: 8px 12px;
+      margin: 5px;
+      border: 2px solid #4caf50;
+      border-radius: 6px;
+      background: #e8f5e9;
+      font-size: 14px;
+    }
+    .rru.highlight {
+      background: #c8e6c9;
+      border-color: #2e7d32;
+      font-weight: bold;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: left;
+      font-size: 13px;
+    }
+    th { background: #007bff; color: white; }
+    tr:nth-child(even) { background: #f9f9f9; }
   </style>
 </head>
 <body>
-  <div class="chassis">
-    <h1>ZXRAN V9200 — Sơ đồ BBU (3 cột, cột 1 & 2: 4 hàng, cột 3: Slot 14)</h1>
-    <p class="note">Mặc định tất cả các slot để trống (Empty).</p>
+  <h2>📡 Sơ đồ BBU 8200</h2>
+  <div class="bbu-layout" id="bbu"></div>
+  <div class="rru-container" id="rrus"></div>
+  <div id="deviceTable"></div>
 
-    <div class="frame">
-      <!-- Column 1 -->
-      <div class="col col-1">
-        <div class="slot">Slot 8<br/><small>Empty</small></div>
-        <div class="slot">Slot 7<br/><small>Empty</small></div>
-        <div class="slot">Slot 6<br/><small>Empty</small></div>
-        <div style="display:flex;gap:10px">
-          <div class="slot" style="flex:1">Slot 5<br/><small>Empty</small></div>
-          <div class="slot" style="flex:1">Slot 13<br/><small>Empty</small></div>
-        </div>
-      </div>
+  <script>
+    function getParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
 
-      <!-- Column 2 -->
-      <div class="col col-2">
-        <div class="slot">Slot 4<br/><small>Empty</small></div>
-        <div class="slot">Slot 3<br/><small>Empty</small></div>
-        <div class="slot">Slot 2<br/><small>Empty</small></div>
-        <div class="slot">Slot 1<br/><small>Empty</small></div>
-      </div>
+    function parseUnitPosition(unitPos) {
+      const obj = {rack: "", shelf: "", slot: ""};
+      if (!unitPos) return obj;
+      unitPos.split(",").forEach(p => {
+        const [key, value] = p.split("=");
+        if (key && value) obj[key.trim().toLowerCase()] = value.trim();
+      });
+      return obj;
+    }
 
-      <!-- Column 3 -->
-      <div class="col col-3">
-        <div class="slot">Slot 14<br/><small>Empty</small></div>
-      </div>
-    </div>
+    function renderBBU(allDevices, label) {
+      // Lọc thiết bị của User Label và Rack=1
+      const devices = allDevices.filter(d =>
+        String(d["User Label"] || "").trim() === label &&
+        parseUnitPosition(d["Unit Position"]).rack === "1"
+      );
 
-    <div class="legend">
-      <strong>Ghi chú</strong>
-      <p class="note">- Cột 1: Slot 8, 7, 6, cuối cùng là Slot 5 & Slot 13 (cùng hàng).<br/>
-      - Cột 2: Slot 4, 3, 2, 1.<br/>
-      - Cột 3: Slot 14.<br/>
-      - Mặc định tất cả slot là trạng thái Empty.</p>
-    </div>
-  </div>
+      const container = document.getElementById("bbu");
+      container.innerHTML = "";
+
+      // Kiểm tra xem có thiết bị V9200 không
+      const hasV9200 = devices.some(d => 
+        String(d["Vendor Unit Type Name"] || "").toUpperCase().includes("V9200")
+      );
+
+      if (hasV9200) {
+        renderV9200Layout(devices, container);
+      } else {
+        renderBBU8200Layout(devices, container);
+      }
+    }
+
+    function renderV9200Layout(devices, container) {
+      container.className = "bbu-layout v9200";
+
+      // Layout V9200 - 3 cột
+      const slotColumns = [
+        ["8", "7", "6", ["5", "13"]],  // cột 1: slot 8,7,6 và slot 5&13 cùng hàng
+        ["4", "3", "2", "1"],          // cột 2: slot 4,3,2,1
+        ["14"]                         // cột 3: slot 14
+      ];
+
+      slotColumns.forEach((col, colIndex) => {
+        const colDiv = document.createElement("div");
+        colDiv.className = `col col-${colIndex + 1}`;
+
+        col.forEach(slot => {
+          if (Array.isArray(slot)) {
+            // Slot cùng hàng (5 & 13)
+            const rowDiv = document.createElement("div");
+            rowDiv.className = "slot-row";
+            
+            slot.forEach(slotNum => {
+              const slotDiv = createV9200Slot(devices, slotNum);
+              rowDiv.appendChild(slotDiv);
+            });
+            
+            colDiv.appendChild(rowDiv);
+          } else {
+            // Slot đơn
+            const slotDiv = createV9200Slot(devices, slot);
+            colDiv.appendChild(slotDiv);
+          }
+        });
+
+        container.appendChild(colDiv);
+      });
+    }
+
+    function createV9200Slot(devices, slotNum) {
+      const matches = devices.filter(d => {
+        const pos = parseUnitPosition(d["Unit Position"]);
+        return pos.slot.toUpperCase() === slotNum.toUpperCase();
+      });
+
+      const div = document.createElement("div");
+      div.className = `slot s${slotNum}`;
+
+      if (matches.length) {
+        const m = matches[0];
+        const pos = parseUnitPosition(m["Unit Position"]);
+        div.innerHTML = `Slot ${slotNum}<br/><small>${m["Vendor Unit Type Name"] || ""}<br/>SN: ${m["Serial Number"] || ""}</small>`;
+        div.classList.add("highlight");
+      } else {
+        div.innerHTML = `Slot ${slotNum}<br/><small>Empty</small>`;
+      }
+
+      return div;
+    }
+
+    function renderBBU8200Layout(devices, container) {
+      container.className = "bbu-layout";
+
+      // Layout BBU 8200 - 4 cột
+      const slotColumns = [
+        ["15", "14", "13"],    // cột 1 bên trái từ dưới lên
+        ["4", "3", "2", "1"],  // cột 2
+        ["8", "7", "6", "5"],  // cột 3
+        ["16"]                 // cột 4 bên phải
+      ];
+
+      slotColumns.forEach(col => {
+        const colDiv = document.createElement("div");
+        colDiv.className = "column";
+
+        col.forEach(slot => {
+          const matches = devices.filter(d => {
+            const pos = parseUnitPosition(d["Unit Position"]);
+            return pos.slot.toUpperCase() === slot.toUpperCase();
+          });
+
+          const div = document.createElement("div");
+          div.className = `slot s${slot}`;
+
+          if (matches.length) {
+            div.innerHTML = matches.map(m => {
+              const pos = parseUnitPosition(m["Unit Position"]);
+              return `Rack=${pos.rack} Slot=${pos.slot}
+${m["Vendor Unit Type Name"] || ""}
+SN: ${m["Serial Number"] || ""}`;
+            }).join("\n\n");
+
+            div.classList.add("highlight");
+          } else {
+            div.innerText = slot;
+          }
+
+          colDiv.appendChild(div);
+        });
+
+        container.appendChild(colDiv);
+      });
+    }
+
+    function renderRRUs(allDevices, label) {
+      const rruDiv = document.getElementById("rrus");
+      rruDiv.innerHTML = "";
+
+      const rrus = allDevices.filter(d =>
+        (d["Inventory Unit Type"] || "").toUpperCase() === "RRU" &&
+        String(d["User Label"] || "").trim() === label
+      );
+
+      if (!rrus.length) return;
+
+      const sectors = {};
+      rrus.forEach(r => {
+        const ul = r["User Label"] || "";
+        const sectorMatch = ul.match(/S\d+/i);
+        const sector = sectorMatch ? sectorMatch[0].toUpperCase() : "Khác";
+        if (!sectors[sector]) sectors[sector] = [];
+        sectors[sector].push(r);
+      });
+
+      rruDiv.innerHTML = "<h3>RRUs</h3>";
+      Object.keys(sectors).forEach(sec => {
+        const secDiv = document.createElement("div");
+        secDiv.className = "rru-sector";
+        secDiv.innerHTML = `<h4>${sec}</h4>`;
+        sectors[sec].forEach(r => {
+          const pos = parseUnitPosition(r["Unit Position"]);
+          const el = document.createElement("div");
+          el.className = "rru highlight";
+          el.innerText = `${r["User Label"] || "RRU"} (Rack=${pos.rack} Slot=${pos.slot})
+${r["Vendor Unit Type Name"] || ""}
+SN: ${r["Serial Number"] || ""}`;
+          secDiv.appendChild(el);
+        });
+        rruDiv.appendChild(secDiv);
+      });
+    }
+
+    function renderTable(allDevices, label) {
+      const rows = allDevices.filter(d => String(d["User Label"] || "").trim() === label);
+      if (!rows.length) {
+        document.getElementById("deviceTable").innerHTML = "<p>Không có thiết bị nào</p>";
+        return;
+      }
+
+      const cols = Object.keys(rows[0]);
+      let html = "<h3>Danh sách thiết bị</h3><table><thead><tr>";
+      cols.forEach(c => html += `<th>${c}</th>`);
+      html += "</tr></thead><tbody>";
+
+      rows.forEach(r => {
+        html += "<tr>";
+        cols.forEach(c => html += `<td>${r[c] ?? ""}</td>`);
+        html += "</tr>";
+      });
+
+      html += "</tbody></table>";
+      document.getElementById("deviceTable").innerHTML = html;
+    }
+
+    const label = getParam("label");
+
+    async function loadData() {
+      try {
+        const response = await fetch("inventory.xlsx");
+        if (!response.ok) throw new Error("Không tìm thấy file inventory.xlsx");
+
+        const buf = await response.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(sheet);
+
+        renderBBU(data, label);
+        renderRRUs(data, label);
+        renderTable(data, label);
+      } catch (e) {
+        document.body.innerHTML += "<p style='color:red'>❌ Lỗi: " + e.message + "</p>";
+      }
+    }
+
+    loadData();
+  </script>
 </body>
 </html>
