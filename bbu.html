@@ -322,7 +322,7 @@
         const pos = parseUnitPosition(d["Unit Position"]);
         const inventoryType = String(d["Inventory Unit Type"] || "").toUpperCase();
         return pos.slot.toUpperCase() === slotNum.toUpperCase() && 
-               inventoryType !== "RRU"; // Loại trừ RRU
+               inventoryType === "PACK"; // Chỉ map thiết bị có Inventory Unit Type là PACK
       });
 
       const div = document.createElement("div");
