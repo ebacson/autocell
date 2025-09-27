@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ZXRAN V9200 - BBU Slot Layout (3 cột)</title>
+  <style>
+    body{font-family: Inter, Arial, sans-serif;background:#f4f6f8;padding:20px}
+    .chassis{max-width:900px;margin:0 auto;background:#fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.08);padding:18px}
+    h1{font-size:20px;margin:0 0 12px}
+    .frame{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;border:2px solid #d6dbe0;border-radius:8px;padding:14px;background:#fafafa}
+
+    .col{border:1px solid #d3d9df;border-radius:8px;padding:10px;background:#ffffff;display:grid;gap:10px;min-height:320px;position:relative}
+    .col-title{font-weight:700;margin-bottom:6px;text-align:center}
+
+    .slot{background:#f0f0f0;border:1px dashed #bbb;border-radius:6px;padding:12px;text-align:center;font-weight:700;display:flex;justify-content:center;align-items:center;flex-direction:column;color:#888}
+
+    .col-1{grid-template-rows:repeat(4,1fr)}
+    .col-2{grid-template-rows:repeat(4,1fr)}
+    .col-3{display:flex;align-items:center;justify-content:center}
+
+    @media (max-width:880px){
+      .frame{grid-template-columns:1fr}
+      .col{min-height:auto}
+    }
+  </style>
+</head>
+<body>
+  <div class="chassis">
+    <h1>ZXRAN V9200 — Sơ đồ BBU (3 cột, cột 1 & 2: 4 hàng, cột 3: Slot 14)</h1>
+    <p class="note">Mặc định tất cả các slot để trống (Empty).</p>
+
+    <div class="frame">
+      <!-- Column 1 -->
+      <div class="col col-1">
+        <div class="slot">Slot 8<br/><small>Empty</small></div>
+        <div class="slot">Slot 7<br/><small>Empty</small></div>
+        <div class="slot">Slot 6<br/><small>Empty</small></div>
+        <div style="display:flex;gap:10px">
+          <div class="slot" style="flex:1">Slot 5<br/><small>Empty</small></div>
+          <div class="slot" style="flex:1">Slot 13<br/><small>Empty</small></div>
+        </div>
+      </div>
+
+      <!-- Column 2 -->
+      <div class="col col-2">
+        <div class="slot">Slot 4<br/><small>Empty</small></div>
+        <div class="slot">Slot 3<br/><small>Empty</small></div>
+        <div class="slot">Slot 2<br/><small>Empty</small></div>
+        <div class="slot">Slot 1<br/><small>Empty</small></div>
+      </div>
+
+      <!-- Column 3 -->
+      <div class="col col-3">
+        <div class="slot">Slot 14<br/><small>Empty</small></div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <strong>Ghi chú</strong>
+      <p class="note">- Cột 1: Slot 8, 7, 6, cuối cùng là Slot 5 & Slot 13 (cùng hàng).<br/>
+      - Cột 2: Slot 4, 3, 2, 1.<br/>
+      - Cột 3: Slot 14.<br/>
+      - Mặc định tất cả slot là trạng thái Empty.</p>
+    </div>
+  </div>
+</body>
+</html>
