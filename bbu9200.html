@@ -178,24 +178,54 @@
     }
 
     function renderBBU(allDevices, label) {
-      // Lọc thiết bị của User Label và Rack=1
-      const devices = allDevices.filter(d =>
-        String(d["User Label"] || "").trim() === label &&
-        parseUnitPosition(d["Unit Position"]).rack === "1"
+      // Lọc tất cả thiết bị có cùng User Label
+      const allDevicesForLabel = allDevices.filter(d =>
+        String(d["User Label"] || "").trim() === label
       );
 
       const container = document.getElementById("bbu");
       container.innerHTML = "";
 
-      // Kiểm tra xem có thiết bị V9200 không
-      const hasV9200 = devices.some(d => 
-        String(d["Vendor Unit Type Name"] || "").toUpperCase().includes("V9200")
+      // Debug: Log thông tin thiết bị
+      console.log("Total devices for label:", allDevicesForLabel.length);
+      allDevicesForLabel.forEach(d => {
+        console.log("Device:", {
+          inventoryUnitType: d["Inventory Unit Type"],
+          vendorUnitFamilyType: d["Vendor Unit Family Type"],
+          vendor: d["Vendor Unit Type Name"],
+          userLabel: d["User Label"],
+          unitPosition: d["Unit Position"]
+        });
+      });
+
+      // Kiểm tra xem có thiết bị subrack V9200 không
+      const hasV9200Subrack = allDevicesForLabel.some(d => 
+        String(d["Inventory Unit Type"] || "").toLowerCase() === "subrack" &&
+        String(d["Vendor Unit Family Type"] || "").toUpperCase().includes("V9200")
       );
 
-      if (hasV9200) {
-        renderV9200Layout(devices, container);
+      // Test: Force V9200 layout nếu có param ?test=v9200
+      const testMode = getParam("test");
+      const shouldUseV9200 = hasV9200Subrack || testMode === "v9200";
+
+      console.log("Has V9200 Subrack:", hasV9200Subrack);
+      console.log("Test mode:", testMode);
+      console.log("Should use V9200:", shouldUseV9200);
+
+      if (shouldUseV9200) {
+        console.log("Rendering V9200 layout");
+        // Lọc thiết bị cho V9200 (có thể không chỉ Rack=1)
+        const v9200Devices = allDevicesForLabel.filter(d =>
+          parseUnitPosition(d["Unit Position"]).rack === "1"
+        );
+        renderV9200Layout(v9200Devices, container);
       } else {
-        renderBBU8200Layout(devices, container);
+        console.log("Rendering BBU8200 layout");
+        // Lọc thiết bị cho BBU8200 (Rack=1)
+        const bbu8200Devices = allDevicesForLabel.filter(d =>
+          parseUnitPosition(d["Unit Position"]).rack === "1"
+        );
+        renderBBU8200Layout(bbu8200Devices, container);
       }
     }
 
