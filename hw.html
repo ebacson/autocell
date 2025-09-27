@@ -122,7 +122,7 @@
 
     async function checkBbuAvailable() {
       try {
-        const resp = await fetch('bbu9200.html', { method: 'GET', cache: 'no-store' });
+        const resp = await fetch('bbu.html', { method: 'GET', cache: 'no-store' });
         return resp.ok;
       } catch (e) {
         console.warn('checkBbuAvailable error', e);
