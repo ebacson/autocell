@@ -48,7 +48,7 @@
       background: #ffffff;
       display: grid;
       gap: 10px;
-      min-height: 320px;
+      min-height: 350px; /* Cùng chiều cao với BBU 8200 */
       position: relative;
     }
     
@@ -76,6 +76,33 @@
     .v9200 .slot-row {
       display: flex;
       gap: 10px;
+    }
+    
+    /* Styling cho slot V9200 giống BBU 8200 */
+    .v9200 .slot {
+      border: 2px solid #007bff;
+      border-radius: 6px;
+      text-align: center;
+      background: #e9f3ff;
+      font-size: 10px; /* Cùng font size với BBU 8200 */
+      padding: 8px 4px; /* Cùng padding với BBU 8200 */
+      min-height: 80px; /* Cùng chiều cao cơ bản với BBU 8200 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      white-space: pre-line;
+      box-sizing: border-box;
+    }
+    
+    .v9200 .slot.s14 {
+      min-height: 125px; /* Slot 14 cao hơn như BBU 8200 */
+    }
+    
+    .v9200 .highlight {
+      background: #ffeb3b !important;
+      border-color: #ff9800 !important;
+      font-weight: bold;
     }
     .column {
       display: flex;
@@ -156,7 +183,7 @@
   </style>
 </head>
 <body>
-  <h2>📡 Sơ đồ BBU 8200</h2>
+  <h2 id="bbuTitle">📡 Sơ đồ BBU</h2>
   <div class="bbu-layout" id="bbu"></div>
   <div class="rru-container" id="rrus"></div>
   <div id="deviceTable"></div>
@@ -175,6 +202,13 @@
         if (key && value) obj[key.trim().toLowerCase()] = value.trim();
       });
       return obj;
+    }
+
+    function updateTitle(label, isV9200) {
+      const titleElement = document.getElementById("bbuTitle");
+      const bbuType = isV9200 ? "V9200" : "8200";
+      const userLabel = label || "Unknown";
+      titleElement.textContent = `📡 Sơ đồ BBU ${userLabel} - ${bbuType}`;
     }
 
     function renderBBU(allDevices, label) {
@@ -211,6 +245,9 @@
       console.log("Has V9200 Subrack:", hasV9200Subrack);
       console.log("Test mode:", testMode);
       console.log("Should use V9200:", shouldUseV9200);
+
+      // Cập nhật tiêu đề
+      updateTitle(label, shouldUseV9200);
 
       if (shouldUseV9200) {
         console.log("Rendering V9200 layout");
