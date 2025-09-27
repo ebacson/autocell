@@ -142,6 +142,12 @@
       border-color: #ff9800 !important;
       font-weight: bold;
     }
+    
+    .slot.empty {
+      background: #f5f5f5 !important;
+      border-color: #cccccc !important;
+      color: #666666 !important;
+    }
     .rru-container {
       margin-top: 30px;
       text-align: center;
@@ -361,7 +367,8 @@ SN: ${m["Serial Number"] || ""}`;
 
             div.classList.add("highlight");
           } else {
-            div.innerText = slot;
+            div.innerHTML = `Slot ${slot}<br/><small>Empty</small>`;
+            div.classList.add("empty");
           }
 
           colDiv.appendChild(div);
