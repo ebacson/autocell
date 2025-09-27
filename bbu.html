@@ -27,6 +27,83 @@
     .column:nth-child(4) {
       width: 80px; /* Cột 4: 80px */
     }
+    
+    /* Layout cho ZXRAN V9200 - 3 cột */
+    .bbu-layout.v9200 {
+      display: grid;
+      grid-template-columns: 2fr 2fr 0.5fr; /* Cột 1,2 rộng gấp đôi, cột 3 chỉ bằng 1/4 */
+      gap: 18px;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 18px;
+      border: 2px solid #d6dbe0;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+    
+    .v9200 .col {
+      border: 1px solid #d3d9df;
+      border-radius: 8px;
+      padding: 10px;
+      background: #ffffff;
+      display: grid;
+      gap: 10px;
+      min-height: 350px; /* Cùng chiều cao với BBU 8200 */
+      position: relative;
+    }
+    
+    .v9200 .col-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+      text-align: center;
+      font-size: 12px;
+    }
+    
+    .v9200 .col-1 {
+      grid-template-rows: repeat(4, 1fr);
+    }
+    
+    .v9200 .col-2 {
+      grid-template-rows: repeat(4, 1fr);
+    }
+    
+    .v9200 .col-3 {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .v9200 .slot-row {
+      display: flex;
+      gap: 10px;
+    }
+    
+    /* Styling cho slot V9200 giống BBU 8200 */
+    .v9200 .slot {
+      border: 2px solid #007bff;
+      border-radius: 6px;
+      text-align: center;
+      background: #e9f3ff;
+      font-size: 10px; /* Cùng font size với BBU 8200 */
+      padding: 8px 4px; /* Cùng padding với BBU 8200 */
+      min-height: 80px; /* Cùng chiều cao cơ bản với BBU 8200 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      white-space: pre-line;
+      box-sizing: border-box;
+    }
+    
+    .v9200 .slot.s14 {
+      min-height: 350px; /* Slot 14 = chiều cao 4 slot cột 2 (80px×4 + 3 gaps×10px = 350px) */
+    }
+    
+    .v9200 .highlight {
+      background: #ffeb3b !important;
+      border-color: #ff9800 !important;
+      font-weight: bold;
+    }
     .column {
       display: flex;
       flex-direction: column;
@@ -64,6 +141,12 @@
       background: #ffeb3b !important;
       border-color: #ff9800 !important;
       font-weight: bold;
+    }
+    
+    .slot.empty {
+      background: #f5f5f5 !important;
+      border-color: #cccccc !important;
+      color: #666666 !important;
     }
     .rru-container {
       margin-top: 30px;
@@ -106,7 +189,7 @@
   </style>
 </head>
 <body>
-  <h2>📡 Sơ đồ BBU 8200</h2>
+  <h2 id="bbuTitle">📡 Sơ đồ BBU</h2>
   <div class="bbu-layout" id="bbu"></div>
   <div class="rru-container" id="rrus"></div>
   <div id="deviceTable"></div>
@@ -127,23 +210,139 @@
       return obj;
     }
 
+    function updateTitle(label, isV9200) {
+      const titleElement = document.getElementById("bbuTitle");
+      const bbuType = isV9200 ? "V9200" : "8200";
+      const userLabel = label || "Unknown";
+      titleElement.textContent = `📡 Sơ đồ BBU ${userLabel} - ${bbuType}`;
+    }
+
     function renderBBU(allDevices, label) {
-      // Lọc thiết bị của User Label và Rack=1
-      const devices = allDevices.filter(d =>
-        String(d["User Label"] || "").trim() === label &&
-        parseUnitPosition(d["Unit Position"]).rack === "1"
+      // Lọc tất cả thiết bị có cùng User Label
+      const allDevicesForLabel = allDevices.filter(d =>
+        String(d["User Label"] || "").trim() === label
       );
 
-      // Layout mới
+      const container = document.getElementById("bbu");
+      container.innerHTML = "";
+
+      // Debug: Log thông tin thiết bị
+      console.log("Total devices for label:", allDevicesForLabel.length);
+      allDevicesForLabel.forEach(d => {
+        console.log("Device:", {
+          inventoryUnitType: d["Inventory Unit Type"],
+          vendorUnitFamilyType: d["Vendor Unit Family Type"],
+          vendor: d["Vendor Unit Type Name"],
+          userLabel: d["User Label"],
+          unitPosition: d["Unit Position"]
+        });
+      });
+
+      // Kiểm tra xem có thiết bị subrack V9200 không
+      const hasV9200Subrack = allDevicesForLabel.some(d => 
+        String(d["Inventory Unit Type"] || "").toLowerCase() === "subrack" &&
+        String(d["Vendor Unit Family Type"] || "").toUpperCase().includes("V9200")
+      );
+
+      // Test: Force V9200 layout nếu có param ?test=v9200
+      const testMode = getParam("test");
+      const shouldUseV9200 = hasV9200Subrack || testMode === "v9200";
+
+      console.log("Has V9200 Subrack:", hasV9200Subrack);
+      console.log("Test mode:", testMode);
+      console.log("Should use V9200:", shouldUseV9200);
+
+      // Cập nhật tiêu đề
+      updateTitle(label, shouldUseV9200);
+
+      if (shouldUseV9200) {
+        console.log("Rendering V9200 layout");
+        // Lọc thiết bị cho V9200 (subrack=1)
+        const v9200Devices = allDevicesForLabel.filter(d => {
+          const pos = parseUnitPosition(d["Unit Position"]);
+          return pos.subrack === "1" || pos.rack === "1"; // Hỗ trợ cả 2 format
+        });
+        renderV9200Layout(v9200Devices, container);
+      } else {
+        console.log("Rendering BBU8200 layout");
+        // Lọc thiết bị cho BBU8200 (rack=1)
+        const bbu8200Devices = allDevicesForLabel.filter(d => {
+          const pos = parseUnitPosition(d["Unit Position"]);
+          return pos.rack === "1";
+        });
+        renderBBU8200Layout(bbu8200Devices, container);
+      }
+    }
+
+    function renderV9200Layout(devices, container) {
+      container.className = "bbu-layout v9200";
+
+      // Layout V9200 - 3 cột
+      const slotColumns = [
+        ["8", "7", "6", ["5", "13"]],  // cột 1: slot 8,7,6 và slot 5&13 cùng hàng
+        ["4", "3", "2", "1"],          // cột 2: slot 4,3,2,1
+        ["14"]                         // cột 3: slot 14
+      ];
+
+      slotColumns.forEach((col, colIndex) => {
+        const colDiv = document.createElement("div");
+        colDiv.className = `col col-${colIndex + 1}`;
+
+        col.forEach(slot => {
+          if (Array.isArray(slot)) {
+            // Slot cùng hàng (5 & 13)
+            const rowDiv = document.createElement("div");
+            rowDiv.className = "slot-row";
+            
+            slot.forEach(slotNum => {
+              const slotDiv = createV9200Slot(devices, slotNum);
+              rowDiv.appendChild(slotDiv);
+            });
+            
+            colDiv.appendChild(rowDiv);
+          } else {
+            // Slot đơn
+            const slotDiv = createV9200Slot(devices, slot);
+            colDiv.appendChild(slotDiv);
+          }
+        });
+
+        container.appendChild(colDiv);
+      });
+    }
+
+    function createV9200Slot(devices, slotNum) {
+      const matches = devices.filter(d => {
+        const pos = parseUnitPosition(d["Unit Position"]);
+        return pos.slot.toUpperCase() === slotNum.toUpperCase();
+      });
+
+      const div = document.createElement("div");
+      div.className = `slot s${slotNum}`;
+
+      if (matches.length) {
+        const m = matches[0];
+        const pos = parseUnitPosition(m["Unit Position"]);
+        const position = pos.subrack ? `Subrack=${pos.subrack} Slot=${pos.slot}` : `Rack=${pos.rack} Slot=${pos.slot}`;
+        div.innerHTML = `Slot ${slotNum}<br/><small>${position}<br/>${m["Vendor Unit Type Name"] || ""}<br/>SN: ${m["Serial Number"] || ""}</small>`;
+        div.classList.add("highlight");
+      } else {
+        div.innerHTML = `Slot ${slotNum}<br/><small>Empty</small>`;
+      }
+
+      return div;
+    }
+
+    function renderBBU8200Layout(devices, container) {
+      container.className = "bbu-layout";
+
+      // Layout BBU 8200 - 4 cột
       const slotColumns = [
         ["15", "14", "13"],    // cột 1 bên trái từ dưới lên
         ["4", "3", "2", "1"],  // cột 2
         ["8", "7", "6", "5"],  // cột 3
         ["16"]                 // cột 4 bên phải
       ];
-
-      const container = document.getElementById("bbu");
-      container.innerHTML = "";
 
       slotColumns.forEach(col => {
         const colDiv = document.createElement("div");
@@ -168,7 +367,8 @@ SN: ${m["Serial Number"] || ""}`;
 
             div.classList.add("highlight");
           } else {
-            div.innerText = slot;
+            div.innerHTML = `Slot ${slot}<br/><small>Empty</small>`;
+            div.classList.add("empty");
           }
 
           colDiv.appendChild(div);
