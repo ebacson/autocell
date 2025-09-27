@@ -402,7 +402,7 @@ SN: ${m["Serial Number"] || ""}`;
       rrus.forEach(r => {
         const ul = r["User Label"] || "";
         const sectorMatch = ul.match(/S\d+/i);
-        const sector = sectorMatch ? sectorMatch[0].toUpperCase() : "Khác";
+        const sector = sectorMatch ? sectorMatch[0].toUpperCase() : "Sector";
         if (!sectors[sector]) sectors[sector] = [];
         sectors[sector].push(r);
       });
