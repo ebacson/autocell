@@ -31,7 +31,7 @@
     /* Layout cho ZXRAN V9200 - 3 cột */
     .bbu-layout.v9200 {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1.5fr 1.5fr 1fr; /* Cột 1,2 gấp đôi, cột 3 bằng 1/2 */
       gap: 18px;
       max-width: 900px;
       margin: 0 auto;
@@ -96,7 +96,7 @@
     }
     
     .v9200 .slot.s14 {
-      min-height: 125px; /* Slot 14 cao hơn như BBU 8200 */
+      min-height: 350px; /* Slot 14 = chiều cao 4 slot cột 2 (80px×4 + 3 gaps×10px = 350px) */
     }
     
     .v9200 .highlight {
