@@ -104,6 +104,12 @@
       border-color: #ff9800 !important;
       font-weight: bold;
     }
+    
+    .v9200 .slot.empty {
+      background: #f5f5f5 !important;
+      border-color: #cccccc !important;
+      color: #666666 !important;
+    }
     .column {
       display: flex;
       flex-direction: column;
@@ -314,7 +320,9 @@
     function createV9200Slot(devices, slotNum) {
       const matches = devices.filter(d => {
         const pos = parseUnitPosition(d["Unit Position"]);
-        return pos.slot.toUpperCase() === slotNum.toUpperCase();
+        const inventoryType = String(d["Inventory Unit Type"] || "").toUpperCase();
+        return pos.slot.toUpperCase() === slotNum.toUpperCase() && 
+               inventoryType !== "RRU"; // Loại trừ RRU
       });
 
       const div = document.createElement("div");
@@ -328,6 +336,7 @@
         div.classList.add("highlight");
       } else {
         div.innerHTML = `Slot ${slotNum}<br/><small>Empty</small>`;
+        div.classList.add("empty");
       }
 
       return div;
