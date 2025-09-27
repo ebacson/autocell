@@ -214,17 +214,19 @@
 
       if (shouldUseV9200) {
         console.log("Rendering V9200 layout");
-        // Lọc thiết bị cho V9200 (có thể không chỉ Rack=1)
-        const v9200Devices = allDevicesForLabel.filter(d =>
-          parseUnitPosition(d["Unit Position"]).rack === "1"
-        );
+        // Lọc thiết bị cho V9200 (subrack=1)
+        const v9200Devices = allDevicesForLabel.filter(d => {
+          const pos = parseUnitPosition(d["Unit Position"]);
+          return pos.subrack === "1" || pos.rack === "1"; // Hỗ trợ cả 2 format
+        });
         renderV9200Layout(v9200Devices, container);
       } else {
         console.log("Rendering BBU8200 layout");
-        // Lọc thiết bị cho BBU8200 (Rack=1)
-        const bbu8200Devices = allDevicesForLabel.filter(d =>
-          parseUnitPosition(d["Unit Position"]).rack === "1"
-        );
+        // Lọc thiết bị cho BBU8200 (rack=1)
+        const bbu8200Devices = allDevicesForLabel.filter(d => {
+          const pos = parseUnitPosition(d["Unit Position"]);
+          return pos.rack === "1";
+        });
         renderBBU8200Layout(bbu8200Devices, container);
       }
     }
@@ -278,7 +280,8 @@
       if (matches.length) {
         const m = matches[0];
         const pos = parseUnitPosition(m["Unit Position"]);
-        div.innerHTML = `Slot ${slotNum}<br/><small>${m["Vendor Unit Type Name"] || ""}<br/>SN: ${m["Serial Number"] || ""}</small>`;
+        const position = pos.subrack ? `Subrack=${pos.subrack} Slot=${pos.slot}` : `Rack=${pos.rack} Slot=${pos.slot}`;
+        div.innerHTML = `Slot ${slotNum}<br/><small>${position}<br/>${m["Vendor Unit Type Name"] || ""}<br/>SN: ${m["Serial Number"] || ""}</small>`;
         div.classList.add("highlight");
       } else {
         div.innerHTML = `Slot ${slotNum}<br/><small>Empty</small>`;
