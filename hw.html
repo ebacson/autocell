@@ -115,7 +115,7 @@
 
     function searchUser() {
       const val = userInput.value.trim().toLowerCase();
-      if (!val) return alert("⚠️ Nhập User Label trước");
+      if (!val) return alert("⚠️ Nhập Mã Trạm trước");
       const result = data.filter(r => String(r["User Label"] || "").toLowerCase().includes(val));
       renderTable(result);
     }
