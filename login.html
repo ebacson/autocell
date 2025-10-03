@@ -900,6 +900,7 @@
       }
       
       console.log('❌ Credentials do not match any known patterns');
+      console.log('🔍 Debug info:', { username, passwordLength: password.length, looksValid });
       showLoginError('Sai tên đăng nhập hoặc mật khẩu VNPT', submitBtn);
     }
     
@@ -974,17 +975,14 @@
         }
       }
       
-      // Check if still on login page (same as Android)
+      // Check if still on login page with error (same as Android)
       if (html.includes('name="username"') && html.includes('name="password"') && html.includes('ĐĂNG NHẬP')) {
         console.log('❌ Still on login page with form - login failed');
         return { success: false, errorMessage: 'Tên đăng nhập hoặc mật khẩu không đúng' };
       }
       
-      // If we get here and don't have login form, it means we moved to next page (OTP or success)
-      if (!html.includes('name="username"') || !html.includes('name="password"')) {
-        console.log('✅ No longer on login page - likely moved to OTP or success page');
-        return { success: true };
-      }
+      // More strict check: only consider success if we have clear indicators
+      // Don't auto-success just because login form is missing
       
       // Check for success keywords (same as Android)
       const successKeywords = [
@@ -1013,7 +1011,15 @@
         return { success: true };
       }
       
+      // Additional check: if we have VNPT-specific content but no login form, it might be success
+      if (!html.includes('name="username"') && !html.includes('name="password"') && 
+          (html.includes('vnpt') || html.includes('VNPT') || html.includes('cas') || html.includes('CAS'))) {
+        console.log('✅ Found VNPT content without login form - likely success');
+        return { success: true };
+      }
+      
       console.log('❌ No clear success/failure indicators found');
+      console.log('📄 HTML preview:', html.substring(0, 300));
       return { success: false, errorMessage: 'Không thể xác định kết quả đăng nhập' };
     }
     
