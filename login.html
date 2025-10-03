@@ -301,8 +301,8 @@
     <div class="container">
       <div class="row">
         <div class="col-xs-12">
-          Số điện thoại Hỗ trợ: 
-          <span>0913485889</span>
+          Số điện thoại Hỗ trợ Email/Xác thực tập trung: 
+          <span>18001555 Nhánh 3</span>
         </div>
       </div>
     </div>
@@ -388,13 +388,26 @@
       
       showAlert('Đang xác thực thông tin đăng nhập...', 'info');
       
-      // Simulate login validation (accept any credentials for demo)
+      // Validate credentials (demo validation)
       setTimeout(() => {
-        // For demo purposes, accept any username/password
-        showAlert('Xác thực thành công! Đang chuyển hướng...', 'success');
-        setTimeout(() => {
-          window.location.href = getServiceUrl();
-        }, 1500);
+        // Demo validation - you can customize these valid credentials
+        const validCredentials = {
+          'admin': '123456',
+          'user': 'password', 
+          'vnpt': 'vnpt123',
+          'test': 'test123'
+        };
+        
+        if (validCredentials[username] && validCredentials[username] === password) {
+          showAlert('Xác thực thành công! Đang chuyển hướng...', 'success');
+          setTimeout(() => {
+            window.location.href = getServiceUrl();
+          }, 1500);
+        } else {
+          showAlert('Sai tên đăng nhập hoặc mật khẩu!', 'danger');
+          $('#password').val('');
+          submitBtn.prop('disabled', false).text('ĐĂNG NHẬP');
+        }
       }, 2000);
       
       // Re-enable button after timeout (fallback)
