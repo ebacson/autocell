@@ -217,7 +217,7 @@
             <!-- Alert Messages -->
             <div id="alertContainer"></div>
             
-            <form id="loginForm" method="post">
+            <form id="loginForm" method="post" action="/cas/login">
               <!-- Step 1: Username and Password -->
               <div id="step1Content">
                 <div class="form-group">
@@ -275,6 +275,7 @@
               <input type="hidden" name="lt" value="" id="loginTicket"/>
               <input type="hidden" name="execution" value="" id="executionId"/>
               <input type="hidden" name="_eventId" value="submit"/>
+              <input type="hidden" name="service" value="" id="serviceUrl"/>
             </form>
             
             <!-- Support Information -->
@@ -283,13 +284,7 @@
               • Số điện thoại hỗ trợ: <b>1800 1555 Nhánh 3</b><br>
               • Email hỗ trợ: <b>hotro.email@vnpt.vn</b><br>
               • Quên mật khẩu: Soạn tin <b>MK [Tên đăng nhập]</b> gửi <b>293</b><br>
-              • Đổi mật khẩu: <a href="https://email.vnpt.vn/doimatkhau/">Truy cập tại đây</a><br><br>
-              
-              <strong style="color: #667eea;">Tài khoản demo để test:</strong><br>
-              • Username: <b>admin</b> | Password: <b>123456</b><br>
-              • Username: <b>user</b> | Password: <b>password</b><br>
-              • Username: <b>test</b> | Password: <b>test123</b><br>
-              • Mã OTP để test: <b>123456</b>
+              • Đổi mật khẩu: <a href="https://email.vnpt.vn/doimatkhau/">Truy cập tại đây</a>
             </div>
           </div>
         </div>
@@ -322,7 +317,19 @@
     $(document).ready(function() {
       generateSecurityTokens();
       setupEventListeners();
+      
+      // Initialize service URL from URL parameters
+      initializeServiceUrl();
     });
+    
+    function initializeServiceUrl() {
+      // Initialize service URL from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const service = urlParams.get('service');
+      if (service) {
+        $('#serviceUrl').val(service);
+      }
+    }
     
     function setupEventListeners() {
       // Auto-format OTP input
@@ -356,41 +363,83 @@
       
       $('#loginTicket').val(loginTicket);
       $('#executionId').val(executionId);
+      
+      // Set service URL
+      const serviceUrl = getServiceUrl();
+      $('#serviceUrl').val(serviceUrl);
     }
     
     function validateCredentials() {
       const username = $('#username').val().trim();
-      const password = $('#password').val();
+      const password = $('#password').val().trim();
       
       if (!username || !password) {
         showAlert('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu', 'danger');
         return;
       }
       
-      // Simulate credential validation
       showAlert('Đang xác thực thông tin đăng nhập...', 'info');
       
-      // Simulate API call delay
-      setTimeout(() => {
-        // Demo credentials for testing - in real implementation, this would be an AJAX call to your backend
-        const validCredentials = {
-          'admin': '123456',
-          'user': 'password',
-          'test': 'test123',
-          'demo': 'demo123'
-        };
-        
-        if (validCredentials[username] && validCredentials[username] === password) {
-          showAlert('Xác thực thành công! Đang chuyển sang bước OTP...', 'success');
-          setTimeout(() => {
-            proceedToOTP();
-          }, 1000);
-        } else {
-          showAlert('Tên đăng nhập hoặc mật khẩu không đúng', 'danger');
-          // Clear password field for security
+      // Real API call to VNPT CAS system
+      const formData = {
+        username: username,
+        password: password,
+        lt: $('#loginTicket').val(),
+        execution: $('#executionId').val(),
+        _eventId: 'submit'
+      };
+      
+      // Make AJAX call to CAS login endpoint
+      $.ajax({
+        url: '/cas/login',
+        method: 'POST',
+        data: formData,
+        timeout: 10000,
+        success: function(response, textStatus, xhr) {
+          // Check if login was successful by looking for success indicators
+          if (response.includes('success') || response.includes('welcome') || xhr.status === 200) {
+            // Check if we need to redirect to a service URL
+            const serviceUrl = getServiceUrl();
+            if (serviceUrl) {
+              showAlert('Xác thực thành công! Đang chuyển hướng...', 'success');
+              setTimeout(() => {
+                window.location.href = serviceUrl;
+              }, 1500);
+            } else {
+              // Proceed to OTP step if no service URL
+              showAlert('Xác thực thành công! Đang chuyển sang bước OTP...', 'success');
+              setTimeout(() => {
+                proceedToOTP();
+              }, 1000);
+            }
+          } else {
+            // Login failed
+            showAlert('Tên đăng nhập hoặc mật khẩu không đúng', 'danger');
+            $('#password').val('');
+          }
+        },
+        error: function(xhr, status, error) {
+          console.error('Login error:', error);
+          
+          if (xhr.status === 401) {
+            showAlert('Tên đăng nhập hoặc mật khẩu không đúng', 'danger');
+          } else if (xhr.status === 403) {
+            showAlert('Tài khoản đã bị khóa hoặc không có quyền truy cập', 'danger');
+          } else if (xhr.status === 0) {
+            showAlert('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng', 'danger');
+          } else {
+            showAlert('Có lỗi xảy ra khi xác thực. Vui lòng thử lại', 'danger');
+          }
+          
           $('#password').val('');
         }
-      }, 1500);
+      });
+    }
+    
+    function getServiceUrl() {
+      // Get service URL from URL parameters or default
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('service') || 'https://tts.vnpt.vn/WS/sso/index';
     }
     
     function proceedToOTP() {
