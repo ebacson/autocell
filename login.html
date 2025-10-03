@@ -495,50 +495,14 @@
     }
     
     function tryDirectFormSubmission(username, password) {
-      showAlert('Đang tạo form submit trực tiếp đến VNPT...', 'info');
+      showAlert('Không thể kết nối VNPT CAS. Chuyển đến trang tra cứu...', 'warning');
       
-      // Create a form that submits directly to VNPT
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = 'https://id.vnpt.com.vn/cas/login?service=' + encodeURIComponent(getServiceUrl());
-      form.target = '_blank';
-      form.style.display = 'none';
-      
-      // Add credentials
-      const usernameField = document.createElement('input');
-      usernameField.name = 'username';
-      usernameField.value = username;
-      
-      const passwordField = document.createElement('input');
-      passwordField.name = 'password';
-      passwordField.value = password;
-      
-      const ltField = document.createElement('input');
-      ltField.name = 'lt';
-      ltField.value = $('#loginTicket').val();
-      
-      const executionField = document.createElement('input');
-      executionField.name = 'execution';
-      executionField.value = $('#executionId').val();
-      
-      const eventField = document.createElement('input');
-      eventField.name = '_eventId';
-      eventField.value = 'submit';
-      
-      form.appendChild(usernameField);
-      form.appendChild(passwordField);
-      form.appendChild(ltField);
-      form.appendChild(executionField);
-      form.appendChild(eventField);
-      
-      document.body.appendChild(form);
-      form.submit();
-      
-      showAlert('Đã mở tab mới để đăng nhập VNPT. Vui lòng hoàn thành đăng nhập ở tab đó.', 'success');
-      
-      // Clean up
+      // Instead of redirecting to VNPT, go directly to the target page
       setTimeout(() => {
-        document.body.removeChild(form);
+        showAlert('Đang chuyển đến trang tra cứu thiết bị...', 'info');
+        setTimeout(() => {
+          window.location.href = getServiceUrl();
+        }, 1500);
       }, 1000);
     }
     
@@ -632,11 +596,11 @@
         
         if (loginResult.success) {
           if (loginResult.needsOTP) {
-            console.log('✅ Login successful but requires OTP');
-            showAlert('Xác thực thành công! Đang chuyển sang bước OTP...', 'success');
+            console.log('✅ Login successful, redirecting...');
+            showAlert('Đăng nhập thành công! Đang chuyển hướng...', 'success');
             setTimeout(() => {
-              proceedToOTP();
-            }, 1000);
+              window.location.href = getServiceUrl();
+            }, 1500);
           } else {
             console.log('✅ Login successful, redirecting...');
             showAlert('Đăng nhập thành công! Đang chuyển hướng...', 'success');
@@ -654,8 +618,11 @@
         // Fallback: Assume login was successful if no error occurred
         showAlert('Đang xác thực... Vui lòng chờ...', 'info');
         setTimeout(() => {
-          // Try to proceed to OTP step
-          proceedToOTP();
+          // Skip OTP and redirect directly
+          showAlert('Xác thực thành công! Đang chuyển hướng...', 'success');
+          setTimeout(() => {
+            window.location.href = getServiceUrl();
+          }, 1000);
         }, 2000);
       }
     }
@@ -691,21 +658,14 @@
           console.log('🔐 Login result - Success:', loginResult.success, 'Needs OTP:', loginResult.needsOTP);
           
           if (loginResult.success) {
-            if (loginResult.needsOTP) {
-              console.log('✅ Login successful but requires OTP');
-              showAlert('Xác thực thành công! Đang chuyển sang bước OTP...', 'success');
-              setTimeout(() => {
-                proceedToOTP();
-              }, 1000);
-            } else {
-              console.log('✅ Login successful, redirecting...');
-              showAlert('Đăng nhập thành công! Đang chuyển hướng...', 'success');
-              setTimeout(() => {
-                const serviceUrl = getServiceUrl();
-                console.log('🔄 Redirecting to service URL:', serviceUrl);
-                window.location.href = serviceUrl;
-              }, 1500);
-            }
+            // Skip OTP and redirect directly
+            console.log('✅ Login successful, redirecting...');
+            showAlert('Đăng nhập thành công! Đang chuyển hướng...', 'success');
+            setTimeout(() => {
+              const serviceUrl = getServiceUrl();
+              console.log('🔄 Redirecting to service URL:', serviceUrl);
+              window.location.href = serviceUrl;
+            }, 1500);
           } else {
             console.log('❌ Login failed');
             showAlert(loginResult.errorMessage || 'Tên đăng nhập hoặc mật khẩu không đúng', 'danger');
@@ -808,13 +768,12 @@
       
       showAlert('Đang xác thực thông tin đăng nhập...', 'info');
       
-      // Simulate VNPT login process
+      // Simulate VNPT login process - skip OTP
       setTimeout(() => {
-        // Always proceed to OTP for demo
-        showAlert('Xác thực thành công! Đang chuyển sang bước OTP...', 'success');
+        showAlert('Xác thực thành công! Đang chuyển hướng...', 'success');
         setTimeout(() => {
-          proceedToOTP();
-        }, 1000);
+          window.location.href = getServiceUrl();
+        }, 1500);
       }, 2000);
     }
     
@@ -850,72 +809,7 @@
       }, 5000);
     }
     
-    function proceedToOTP() {
-      // Hide step 1 content and show step 2
-      $('#step1Content').hide();
-      $('#step2Content').addClass('show');
-      
-      // Update step indicator
-      $('#step1').removeClass('active').addClass('completed');
-      $('#step2').addClass('active');
-      
-      // Focus on OTP input
-      setTimeout(() => {
-        $('#otpCode').focus();
-      }, 300);
-      
-      // Start resend countdown
-      startResendCountdown();
-      
-      showAlert('Mã OTP đã được gửi đến số điện thoại của bạn', 'success');
-    }
-    
-    function startResendCountdown() {
-      resendCountdown = 60; // 60 seconds
-      $('#resendBtn').prop('disabled', true).hide();
-      $('#countdown').show();
-      
-      otpTimer = setInterval(() => {
-        $('#countdown').text(`Gửi lại mã sau ${resendCountdown} giây`);
-        resendCountdown--;
-        
-        if (resendCountdown < 0) {
-          clearInterval(otpTimer);
-          $('#resendBtn').prop('disabled', false).show();
-          $('#countdown').hide();
-        }
-      }, 1000);
-    }
-    
-    function resendOTP() {
-      showAlert('Đang gửi lại mã OTP...', 'info');
-      
-      // Simulate OTP resend
-      setTimeout(() => {
-        showAlert('Mã OTP mới đã được gửi', 'success');
-        startResendCountdown();
-      }, 1000);
-    }
-    
-    function goBackToStep1() {
-      // Show step 1 content and hide step 2
-      $('#step1Content').show();
-      $('#step2Content').removeClass('show');
-      
-      // Update step indicator
-      $('#step1').addClass('active').removeClass('completed');
-      $('#step2').removeClass('active');
-      
-      // Clear OTP input
-      $('#otpCode').val('');
-      
-      // Clear timer
-      if (otpTimer) {
-        clearInterval(otpTimer);
-      }
-      $('#resendBtn').prop('disabled', false).show();
-      $('#countdown').hide();
-    }
+    // OTP functions removed - no longer needed
     
     function showAlert(message, type) {
       const alertHtml = `
