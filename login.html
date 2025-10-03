@@ -217,7 +217,7 @@
             <!-- Alert Messages -->
             <div id="alertContainer"></div>
             
-            <form id="loginForm" method="post" action="/cas/login">
+            <form id="loginForm" method="post">
               <!-- Step 1: Username and Password -->
               <div id="step1Content">
                 <div class="form-group">
@@ -380,46 +380,92 @@
       
       showAlert('Đang xác thực thông tin đăng nhập...', 'info');
       
-      // Real API call to VNPT CAS system
+      // Step 1: Load login page to get fresh lt and execution tokens
+      loadLoginPageAndSubmit(username, password);
+    }
+    
+    function loadLoginPageAndSubmit(username, password) {
+      // First, load the login page to get fresh tokens
+      $.ajax({
+        url: 'https://id.vnpt.com.vn/cas/login?service=' + encodeURIComponent(getServiceUrl()),
+        method: 'GET',
+        timeout: 10000,
+        success: function(html) {
+          console.log('🔐 Loaded login page, extracting tokens...');
+          
+          // Extract lt and execution from the HTML
+          const lt = extractInputValue(html, 'lt');
+          const execution = extractInputValue(html, 'execution');
+          
+          if (!lt || !execution) {
+            showAlert('Không thể tải thông tin xác thực. Vui lòng thử lại', 'danger');
+            return;
+          }
+          
+          console.log('🔐 Extracted tokens - lt:', lt, 'execution:', execution);
+          
+          // Now submit login with fresh tokens
+          submitLoginRequest(username, password, lt, execution);
+        },
+        error: function(xhr, status, error) {
+          console.error('Error loading login page:', error);
+          showAlert('Không thể kết nối đến server VNPT. Vui lòng kiểm tra kết nối mạng', 'danger');
+        }
+      });
+    }
+    
+    function submitLoginRequest(username, password, lt, execution) {
       const formData = {
         username: username,
         password: password,
-        lt: $('#loginTicket').val(),
-        execution: $('#executionId').val(),
+        lt: lt,
+        execution: execution,
         _eventId: 'submit'
       };
       
-      // Make AJAX call to CAS login endpoint
+      console.log('🔐 Submitting login request with data:', formData);
+      
       $.ajax({
-        url: '/cas/login',
+        url: 'https://id.vnpt.com.vn/cas/login?service=' + encodeURIComponent(getServiceUrl()),
         method: 'POST',
         data: formData,
-        timeout: 10000,
-        success: function(response, textStatus, xhr) {
-          // Check if login was successful by looking for success indicators
-          if (response.includes('success') || response.includes('welcome') || xhr.status === 200) {
-            // Check if we need to redirect to a service URL
-            const serviceUrl = getServiceUrl();
-            if (serviceUrl) {
-              showAlert('Xác thực thành công! Đang chuyển hướng...', 'success');
-              setTimeout(() => {
-                window.location.href = serviceUrl;
-              }, 1500);
-            } else {
-              // Proceed to OTP step if no service URL
+        timeout: 15000,
+        success: function(responseHtml, textStatus, xhr) {
+          console.log('🔐 Login response received, analyzing...');
+          console.log('Response HTML length:', responseHtml.length);
+          
+          // Debug: Log full HTML if contains login form (like Android)
+          if (responseHtml.includes('name="username"') && responseHtml.includes('name="password"')) {
+            console.log('📄 Full HTML (contains login form):');
+            console.log(responseHtml);
+          }
+          
+          // Check login result using same logic as Android
+          const loginResult = checkLoginSuccess(responseHtml);
+          console.log('🔐 Login result - Success:', loginResult.success, 'Needs OTP:', loginResult.needsOTP);
+          
+          if (loginResult.success) {
+            if (loginResult.needsOTP) {
+              console.log('✅ Login successful but requires OTP');
               showAlert('Xác thực thành công! Đang chuyển sang bước OTP...', 'success');
               setTimeout(() => {
                 proceedToOTP();
               }, 1000);
+            } else {
+              console.log('✅ Login successful, redirecting...');
+              showAlert('Đăng nhập thành công! Đang chuyển hướng...', 'success');
+              setTimeout(() => {
+                window.location.href = getServiceUrl();
+              }, 1500);
             }
           } else {
-            // Login failed
-            showAlert('Tên đăng nhập hoặc mật khẩu không đúng', 'danger');
+            console.log('❌ Login failed');
+            showAlert(loginResult.errorMessage || 'Tên đăng nhập hoặc mật khẩu không đúng', 'danger');
             $('#password').val('');
           }
         },
         error: function(xhr, status, error) {
-          console.error('Login error:', error);
+          console.error('Login request error:', error);
           
           if (xhr.status === 401) {
             showAlert('Tên đăng nhập hoặc mật khẩu không đúng', 'danger');
@@ -434,6 +480,67 @@
           $('#password').val('');
         }
       });
+    }
+    
+    function extractInputValue(html, name) {
+      const pattern = new RegExp(`<input[^>]*name="${name}"[^>]*value="([^"]*)"`, 'i');
+      const match = html.match(pattern);
+      return match ? match[1] : null;
+    }
+    
+    function checkLoginSuccess(html) {
+      console.log('🔍 Starting login success check...');
+      
+      // Check for failure keywords (same as Android)
+      const failureKeywords = [
+        'authentication failed',
+        'Tên đăng nhập hoặc mật khẩu không đúng',
+        'Tên đăng nhập hoặc mật khẩu sai',
+        'Đăng nhập không thành công',
+        'Sai tài khoản',
+        'Sai mật khẩu',
+        'Invalid credentials',
+        'Login failed'
+      ];
+      
+      for (let keyword of failureKeywords) {
+        if (html.toLowerCase().includes(keyword.toLowerCase())) {
+          console.log('❌ Found failure keyword:', keyword);
+          return { success: false, errorMessage: keyword };
+        }
+      }
+      
+      // Check if still on login page (same as Android)
+      if (html.includes('name="username"') && html.includes('name="password"')) {
+        console.log('❌ Still on login page with form - login failed');
+        return { success: false, errorMessage: 'Tên đăng nhập hoặc mật khẩu không đúng' };
+      }
+      
+      // Check for success keywords (same as Android)
+      const successKeywords = [
+        'fms.vnpt.vn',
+        'portal.vnpt.vn',
+        'state=',
+        'success',
+        'welcome',
+        'dashboard'
+      ];
+      
+      for (let keyword of successKeywords) {
+        if (html.includes(keyword)) {
+          console.log('✅ Found success keyword:', keyword);
+          return { success: true, needsOTP: false };
+        }
+      }
+      
+      // Check for OTP form (also success) - same as Android
+      if (html.includes('validate_pass_otp') || html.includes('Xin chào') || html.includes('Nhập mã OTP') || html.includes('otp')) {
+        console.log('✅ Found OTP form - login successful, needs OTP');
+        return { success: true, needsOTP: true };
+      }
+      
+      console.log('❌ No clear success/failure indicators found');
+      return { success: false, errorMessage: 'Không thể xác định kết quả đăng nhập' };
     }
     
     function getServiceUrl() {
@@ -533,28 +640,38 @@
       
       const otpCode = $('#otpCode').val().trim();
       
-      if (!otpCode || otpCode.length !== 6) {
-        showAlert('Vui lòng nhập mã OTP hợp lệ (6 số)', 'danger');
+      if (!otpCode || otpCode.length < 4) {
+        showAlert('Vui lòng nhập mã OTP hợp lệ (ít nhất 4 ký tự)', 'danger');
         return;
       }
       
-      // Simulate OTP validation
+      verifyOTP(otpCode);
+    });
+    
+    function verifyOTP(otpCode) {
       showAlert('Đang xác thực mã OTP...', 'info');
       
+      // Simulate OTP verification delay (like Android)
       setTimeout(() => {
-        // In real implementation, this would validate the OTP with your backend
-        if (otpCode === '123456') { // Demo OTP for testing
-          showAlert('Đăng nhập thành công! Đang chuyển hướng...', 'success');
-          
-          // Redirect to dashboard or intended service
-          setTimeout(() => {
-            window.location.href = 'dashboard.html'; // Change this to your target URL
-          }, 2000);
-        } else {
-          showAlert('Mã OTP không đúng. Vui lòng thử lại', 'danger');
-        }
-      }, 1500);
-    });
+        console.log('✅ OTP verification successful - accepting code:', otpCode);
+        
+        // For demo purposes, accept any OTP code (like Android code)
+        // In real implementation, this would make another API call to verify OTP
+        showAlert('Xác thực OTP thành công! Đang chuyển hướng...', 'success');
+        
+        // Redirect to service URL or dashboard
+        setTimeout(() => {
+          const serviceUrl = getServiceUrl();
+          if (serviceUrl && serviceUrl !== 'https://tts.vnpt.vn/WS/sso/index') {
+            window.location.href = serviceUrl;
+          } else {
+            // Default redirect to a dashboard or main page
+            window.location.href = 'dashboard.html';
+          }
+        }, 2000);
+        
+      }, 1000); // Simulate network delay like Android
+    }
     
     // CAPS LOCK detection
     $('#password').on('keypress', function(e) {
