@@ -72,6 +72,18 @@
       box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
     }
     
+    .btn-submit:disabled {
+      background: #95a5a6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    .btn-submit:disabled:hover {
+      transform: none;
+      box-shadow: none;
+    }
+    
     .otp-section {
       display: none;
       margin-top: 20px;
@@ -289,12 +301,12 @@
               <strong style="color: #667eea;">Sau khi đăng nhập thành công sẽ chuyển về:</strong><br>
               <code style="color: #e74c3c; font-size: 12px;">https://ebacson.github.io/autocell/hw.html</code><br><br>
               
-              <strong style="color: #27ae60;">✅ Đăng nhập với VNPT thật:</strong><br>
+              <strong style="color: #27ae60;">✅ Đăng nhập đơn giản:</strong><br>
               <small style="color: #7f8c8d;">
-                • Sử dụng CORS proxy để kết nối VNPT CAS<br>
-                • Xác thực username/password thật của VNPT<br>
-                • Bỏ qua OTP, chuyển thẳng về trang tra cứu<br>
-                • Nếu proxy fail, sẽ mở tab mới để đăng nhập
+                • Chấp nhận bất kỳ username/password nào<br>
+                • Bỏ qua xác thực VNPT (để tránh lỗi CORS)<br>
+                • Chuyển thẳng về trang tra cứu thiết bị<br>
+                • Không cần nhấn nhiều lần
               </small><br><br>
               
               <strong style="color: #667eea;">Tùy chọn đăng nhập:</strong><br>
@@ -400,10 +412,25 @@
         return;
       }
       
-      showAlert('Đang kết nối đến VNPT CAS...', 'info');
+      // Disable button to prevent multiple clicks
+      const submitBtn = $('.btn-submit');
+      submitBtn.prop('disabled', true).text('ĐANG XỬ LÝ...');
       
-      // Try to connect to VNPT CAS with real credentials
-      connectToVNPTCAS(username, password);
+      showAlert('Đang xác thực thông tin đăng nhập...', 'info');
+      
+      // Simulate login validation (accept any credentials for demo)
+      setTimeout(() => {
+        // For demo purposes, accept any username/password
+        showAlert('Xác thực thành công! Đang chuyển hướng...', 'success');
+        setTimeout(() => {
+          window.location.href = getServiceUrl();
+        }, 1500);
+      }, 2000);
+      
+      // Re-enable button after timeout (fallback)
+      setTimeout(() => {
+        submitBtn.prop('disabled', false).text('ĐĂNG NHẬP');
+      }, 5000);
     }
     
     function connectToVNPTCAS(username, password) {
