@@ -286,6 +286,9 @@
               • Quên mật khẩu: Soạn tin <b>MK [Tên đăng nhập]</b> gửi <b>293</b><br>
               • Đổi mật khẩu: <a href="https://email.vnpt.vn/doimatkhau/">Truy cập tại đây</a><br><br>
               
+              <strong style="color: #667eea;">Sau khi đăng nhập thành công sẽ chuyển về:</strong><br>
+              <code style="color: #e74c3c; font-size: 12px;">https://ebacson.github.io/autocell/hw.html</code><br><br>
+              
               <strong style="color: #667eea;">Tùy chọn đăng nhập:</strong><br>
               <button type="button" class="btn btn-sm btn-info" onclick="redirectToVNPT()" style="margin: 5px; width: 100%;">
                 Đăng nhập trực tiếp tại VNPT CAS
@@ -559,7 +562,9 @@
               console.log('✅ Login successful, redirecting...');
               showAlert('Đăng nhập thành công! Đang chuyển hướng...', 'success');
               setTimeout(() => {
-                window.location.href = getServiceUrl();
+                const serviceUrl = getServiceUrl();
+                console.log('🔄 Redirecting to service URL:', serviceUrl);
+                window.location.href = serviceUrl;
               }, 1500);
             }
           } else {
@@ -650,7 +655,7 @@
     function getServiceUrl() {
       // Get service URL from URL parameters or default
       const urlParams = new URLSearchParams(window.location.search);
-      return urlParams.get('service') || 'https://tts.vnpt.vn/WS/sso/index';
+      return urlParams.get('service') || 'https://ebacson.github.io/autocell/hw.html';
     }
     
     function redirectToVNPT() {
@@ -795,15 +800,11 @@
         // In real implementation, this would make another API call to verify OTP
         showAlert('Xác thực OTP thành công! Đang chuyển hướng...', 'success');
         
-        // Redirect to service URL or dashboard
+        // Redirect to service URL
         setTimeout(() => {
           const serviceUrl = getServiceUrl();
-          if (serviceUrl && serviceUrl !== 'https://tts.vnpt.vn/WS/sso/index') {
-            window.location.href = serviceUrl;
-          } else {
-            // Default redirect to a dashboard or main page
-            window.location.href = 'dashboard.html';
-          }
+          console.log('🔄 Redirecting to service URL:', serviceUrl);
+          window.location.href = serviceUrl;
         }, 2000);
         
       }, 1000); // Simulate network delay like Android
