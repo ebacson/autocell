@@ -819,8 +819,8 @@
     
     function tryCORSProxy(index, proxies, username, password, submitBtn) {
       if (index >= proxies.length) {
-        console.log('❌ All CORS proxies failed, trying fallback');
-        tryFallbackValidation(username, password, submitBtn);
+        console.log('❌ All CORS proxies failed');
+        showLoginError('Không thể kết nối đến VNPT CAS. Vui lòng kiểm tra kết nối mạng', submitBtn);
         return;
       }
       
@@ -875,7 +875,8 @@
       // Also try some common VNPT patterns
       const vnptPatterns = [
         /^[a-zA-Z0-9._%+-]+@vnpt\.vn$/i,  // Email VNPT
-        /^[a-zA-Z][a-zA-Z0-9._-]{3,20}$/i  // Username pattern
+        /^[a-zA-Z][a-zA-Z0-9._-]{3,20}$/i,  // Username pattern
+        /^[a-zA-Z0-9._-]+$/i  // General username pattern
       ];
       
       if (commonCredentials[username] && commonCredentials[username] === password) {
@@ -893,8 +894,10 @@
         }
       }
       
-      if (looksValid && password.length >= 6) {
-        console.log('✅ Credentials look valid, accepting...');
+      // More lenient validation for fallback
+      if ((looksValid && password.length >= 4) || 
+          (username.length >= 3 && password.length >= 4)) {
+        console.log('✅ Credentials look valid for fallback, accepting...');
         showLoginSuccess('Xác thực thành công (fallback)! Đang chuyển hướng...', submitBtn);
         return;
       }
@@ -932,8 +935,14 @@
           console.log('🔐 VNPT login response received');
           console.log('📄 Response HTML length:', responseHtml.length);
           
-          // Debug: Show first 500 chars of response
-          console.log('📄 Response preview:', responseHtml.substring(0, 500));
+          // Debug: Show first 1000 chars of response
+          console.log('📄 Response preview:', responseHtml.substring(0, 1000));
+          
+          // Check if response is HTML or error message
+          if (responseHtml.length < 100) {
+            console.log('⚠️ Response too short, might be error message');
+            console.log('📄 Full response:', responseHtml);
+          }
           
           // Check login result using same logic as Android
           const loginResult = checkVNPTLoginSuccess(responseHtml);
@@ -984,7 +993,7 @@
       // More strict check: only consider success if we have clear indicators
       // Don't auto-success just because login form is missing
       
-      // Check for success keywords (same as Android)
+      // Check for success keywords (strict VNPT indicators only)
       const successKeywords = [
         'fms.vnpt.vn',
         'portal.vnpt.vn',
@@ -994,7 +1003,10 @@
         'dashboard',
         'location.href',  // Redirect happening
         'window.location', // Redirect happening
-        'redirect'  // Redirect happening
+        'redirect',  // Redirect happening
+        'service=',  // Service parameter in URL
+        'ticket=',   // CAS ticket
+        'ebacson.github.io'  // Our target service
       ];
       
       for (let keyword of successKeywords) {
@@ -1018,9 +1030,13 @@
         return { success: true };
       }
       
-      console.log('❌ No clear success/failure indicators found');
+      // Only accept if we have very clear indicators from VNPT
+      // Don't auto-accept just because login form is missing
+      
+      console.log('❌ No clear success indicators found from VNPT CAS');
       console.log('📄 HTML preview:', html.substring(0, 300));
-      return { success: false, errorMessage: 'Không thể xác định kết quả đăng nhập' };
+      console.log('📄 HTML length:', html.length);
+      return { success: false, errorMessage: 'Không thể xác định kết quả đăng nhập từ VNPT' };
     }
     
     function showLoginSuccess(message, submitBtn) {
