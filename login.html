@@ -527,11 +527,11 @@
     function submitDirectForm(username, password, submitBtn) {
       console.log('🔐 Step 3: Direct form submission as fallback...');
       
-      // Create hidden form and submit directly
+      // Create hidden form and submit to iframe to check result
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = 'https://id.vnpt.com.vn/cas/login?service=' + encodeURIComponent(getServiceUrl());
-      form.target = '_blank';
+      form.target = 'vnpt_result_frame';
       form.style.display = 'none';
       
       // Add form fields
@@ -551,7 +551,20 @@
         form.appendChild(input);
       }
       
+      // Create iframe to capture response
+      const iframe = document.createElement('iframe');
+      iframe.name = 'vnpt_result_frame';
+      iframe.style.display = 'none';
+      iframe.onload = function() {
+        setTimeout(() => {
+          checkDirectFormResult(iframe, submitBtn);
+        }, 3000);
+      };
+      
+      document.body.appendChild(iframe);
       document.body.appendChild(form);
+      
+      console.log('🔐 Submitting direct form to iframe...');
       form.submit();
       
       // Clean up
@@ -559,10 +572,58 @@
         if (document.body.contains(form)) {
           document.body.removeChild(form);
         }
-      }, 1000);
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 10000);
+    }
+    
+    function checkDirectFormResult(iframe, submitBtn) {
+      try {
+        console.log('🔐 Checking direct form result...');
+        
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        const html = iframeDoc.documentElement.outerHTML;
+        
+        console.log('📄 Direct form response length:', html.length);
+        
+        if (html.length < 100) {
+          console.log('⚠️ Response too short, assuming error');
+          showLoginError('Không thể nhận phản hồi từ VNPT CAS', submitBtn);
+          return;
+        }
+        
+        // Check login result using same logic as proxy method
+        const loginResult = checkVNPTLoginSuccess(html);
+        console.log('🔐 Direct form login result:', loginResult);
+        
+        if (loginResult.success) {
+          showLoginSuccess('Xác thực VNPT thành công! Đang chuyển hướng...', submitBtn);
+        } else {
+          showLoginError('Sai tên đăng nhập hoặc mật khẩu VNPT', submitBtn);
+        }
+        
+      } catch (e) {
+        console.log('🔐 Cannot access iframe content due to CORS');
+        
+        // If we can't read iframe content, we need to make an educated guess
+        // Check if there are multiple tabs/windows open (indicates redirect happened)
+        setTimeout(() => {
+          checkLoginSuccessByWindowCount(submitBtn);
+        }, 2000);
+      }
+    }
+    
+    function checkLoginSuccessByWindowCount(submitBtn) {
+      // This is a fallback method when we can't read iframe content
+      // We'll be more conservative and ask user to check manually
+      console.log('🔐 Cannot verify login result due to CORS restrictions...');
       
-      // Show success message since we can't verify the result
-      showLoginSuccess('Đã gửi thông tin đăng nhập đến VNPT. Vui lòng kiểm tra kết quả...', submitBtn);
+      // Don't assume success - let user check manually
+      showAlert('Đã gửi thông tin đăng nhập đến VNPT CAS. Vui lòng kiểm tra kết quả trong tab mới.', 'info');
+      
+      // Re-enable button for retry
+      submitBtn.prop('disabled', false).text('ĐĂNG NHẬP');
     }
     
     function checkLoginSuccessByServiceAccess(submitBtn) {
@@ -676,10 +737,13 @@
         }
         
       } catch (e) {
-        console.log('🔐 Cannot access iframe content due to CORS, assuming success after timeout');
-        // If we can't access iframe content, assume it might be success
-        // User will see the result in the iframe or get redirected
-        showLoginSuccess('Đã gửi thông tin đăng nhập đến VNPT. Vui lòng kiểm tra kết quả...', submitBtn);
+        console.log('🔐 Cannot access iframe content due to CORS');
+        // If we can't access iframe content, don't assume success
+        // Let user check the result manually
+        showAlert('Đã gửi thông tin đăng nhập đến VNPT CAS. Vui lòng kiểm tra kết quả trong tab mới.', 'info');
+        
+        // Re-enable button for retry
+        submitBtn.prop('disabled', false).text('ĐĂNG NHẬP');
       }
     }
     
@@ -1247,78 +1311,96 @@
     
     function checkVNPTLoginSuccess(html) {
       console.log('🔍 Checking VNPT login success...');
+      console.log('📄 HTML length:', html.length);
       
-      // Check for failure keywords (same as Android code)
+      if (!html || html.length < 100) {
+        console.log('❌ HTML too short or empty');
+        return { success: false, errorMessage: 'Phản hồi từ server quá ngắn' };
+      }
+      
+      const lowerHtml = html.toLowerCase();
+      
+      // STRICT CHECK: Look for explicit failure keywords FIRST
       const failureKeywords = [
         'authentication failed',
-        'Tên đăng nhập hoặc mật khẩu không đúng',
-        'Tên đăng nhập hoặc mật khẩu sai',
-        'Đăng nhập không thành công',
-        'Sai tài khoản',
-        'Sai mật khẩu',
-        'Invalid credentials',
-        'Login failed'
+        'tên đăng nhập hoặc mật khẩu không đúng',
+        'tên đăng nhập hoặc mật khẩu sai',
+        'đăng nhập không thành công',
+        'sai tài khoản',
+        'sai mật khẩu',
+        'invalid credentials',
+        'login failed',
+        'wrong password',
+        'invalid username',
+        'username or password incorrect',
+        'không thể đăng nhập',
+        'thông tin không chính xác',
+        'tài khoản không tồn tại',
+        'mật khẩu sai',
+        'đăng nhập thất bại'
       ];
       
       for (let keyword of failureKeywords) {
-        if (html.toLowerCase().includes(keyword.toLowerCase())) {
+        if (lowerHtml.includes(keyword)) {
           console.log('❌ Found failure keyword:', keyword);
           return { success: false, errorMessage: keyword };
         }
       }
       
-      // Check if still on login page with error (same as Android)
-      if (html.includes('name="username"') && html.includes('name="password"') && html.includes('ĐĂNG NHẬP')) {
-        console.log('❌ Still on login page with form - login failed');
+      // STRICT CHECK: If still on login page with form, it's definitely a failure
+      const hasLoginForm = html.includes('name="username"') && html.includes('name="password"');
+      const isOnVNPTLoginPage = html.includes('id.vnpt.com.vn') || html.includes('cas/login');
+      
+      if (hasLoginForm && isOnVNPTLoginPage) {
+        console.log('❌ Still on VNPT login page with form - login failed');
         return { success: false, errorMessage: 'Tên đăng nhập hoặc mật khẩu không đúng' };
       }
       
-      // More strict check: only consider success if we have clear indicators
-      // Don't auto-success just because login form is missing
-      
-      // Check for success keywords (strict VNPT indicators only)
+      // ONLY accept success if we have VERY clear success indicators
       const successKeywords = [
         'fms.vnpt.vn',
         'portal.vnpt.vn',
-        'state=',
-        'success',
-        'welcome',
-        'dashboard',
-        'location.href',  // Redirect happening
-        'window.location', // Redirect happening
-        'redirect',  // Redirect happening
-        'service=',  // Service parameter in URL
-        'ticket=',   // CAS ticket
-        'ebacson.github.io'  // Our target service
+        'location.href',
+        'window.location',
+        'redirect',
+        'service=',
+        'ticket=',
+        'ebacson.github.io',
+        'autocell/hw.html'
       ];
       
+      let hasClearSuccess = false;
       for (let keyword of successKeywords) {
         if (html.includes(keyword)) {
-          console.log('✅ Found success keyword:', keyword);
-          return { success: true };
+          console.log('✅ Found clear success keyword:', keyword);
+          hasClearSuccess = true;
+          break;
         }
       }
       
-      // Check for OTP form (also success) - same as Android
-      if (html.includes('validate_pass_otp') || html.includes('Xin chào') || html.includes('Nhập mã OTP') || html.includes('otp') || 
-          html.includes('mã xác thực') || html.includes('OTP') || html.includes('xác thực') || html.includes('verification')) {
-        console.log('✅ Found OTP form - login successful, but skipping OTP');
+      // Check for OTP page (also success, but we'll bypass)
+      const hasOTPPage = html.includes('validate_pass_otp') || 
+                        html.includes('nhập mã otp') ||
+                        html.includes('mã xác thực') ||
+                        html.includes('otp') ||
+                        html.includes('xác thực') ||
+                        html.includes('verification');
+      
+      if (hasOTPPage) {
+        console.log('✅ Found OTP page - login successful, bypassing OTP');
         return { success: true };
       }
       
-      // Additional check: if we have VNPT-specific content but no login form, it might be success
-      if (!html.includes('name="username"') && !html.includes('name="password"') && 
-          (html.includes('vnpt') || html.includes('VNPT') || html.includes('cas') || html.includes('CAS'))) {
-        console.log('✅ Found VNPT content without login form - likely success');
+      // ONLY return success if we have clear indicators
+      if (hasClearSuccess) {
+        console.log('✅ Clear success indicators found');
         return { success: true };
       }
       
-      // Only accept if we have very clear indicators from VNPT
-      // Don't auto-accept just because login form is missing
-      
-      console.log('❌ No clear success indicators found from VNPT CAS');
-      console.log('📄 HTML preview:', html.substring(0, 300));
-      console.log('📄 HTML length:', html.length);
+      // If we get here, we don't have clear success indicators
+      // Even if login form is missing, we can't be sure it's success
+      console.log('❌ No clear success indicators found');
+      console.log('📄 HTML preview:', html.substring(0, 500));
       return { success: false, errorMessage: 'Không thể xác định kết quả đăng nhập từ VNPT' };
     }
     
