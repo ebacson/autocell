@@ -283,7 +283,13 @@
               • Số điện thoại hỗ trợ: <b>1800 1555 Nhánh 3</b><br>
               • Email hỗ trợ: <b>hotro.email@vnpt.vn</b><br>
               • Quên mật khẩu: Soạn tin <b>MK [Tên đăng nhập]</b> gửi <b>293</b><br>
-              • Đổi mật khẩu: <a href="https://email.vnpt.vn/doimatkhau/">Truy cập tại đây</a>
+              • Đổi mật khẩu: <a href="https://email.vnpt.vn/doimatkhau/">Truy cập tại đây</a><br><br>
+              
+              <strong style="color: #667eea;">Tài khoản demo để test:</strong><br>
+              • Username: <b>admin</b> | Password: <b>123456</b><br>
+              • Username: <b>user</b> | Password: <b>password</b><br>
+              • Username: <b>test</b> | Password: <b>test123</b><br>
+              • Mã OTP để test: <b>123456</b>
             </div>
           </div>
         </div>
@@ -366,11 +372,23 @@
       
       // Simulate API call delay
       setTimeout(() => {
-        // In real implementation, this would be an AJAX call to your backend
-        if (username && password) {
-          proceedToOTP();
+        // Demo credentials for testing - in real implementation, this would be an AJAX call to your backend
+        const validCredentials = {
+          'admin': '123456',
+          'user': 'password',
+          'test': 'test123',
+          'demo': 'demo123'
+        };
+        
+        if (validCredentials[username] && validCredentials[username] === password) {
+          showAlert('Xác thực thành công! Đang chuyển sang bước OTP...', 'success');
+          setTimeout(() => {
+            proceedToOTP();
+          }, 1000);
         } else {
           showAlert('Tên đăng nhập hoặc mật khẩu không đúng', 'danger');
+          // Clear password field for security
+          $('#password').val('');
         }
       }, 1500);
     }
