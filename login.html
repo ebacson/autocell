@@ -289,9 +289,19 @@
               <strong style="color: #667eea;">Sau khi đăng nhập thành công sẽ chuyển về:</strong><br>
               <code style="color: #e74c3c; font-size: 12px;">https://ebacson.github.io/autocell/hw.html</code><br><br>
               
+              <strong style="color: #27ae60;">✅ Đăng nhập với VNPT thật:</strong><br>
+              <small style="color: #7f8c8d;">
+                • Sử dụng CORS proxy để kết nối VNPT CAS<br>
+                • Xác thực username/password thật của VNPT<br>
+                • Nếu proxy fail, sẽ mở tab mới để đăng nhập
+              </small><br><br>
+              
               <strong style="color: #667eea;">Tùy chọn đăng nhập:</strong><br>
+              <button type="button" class="btn btn-sm btn-success" onclick="useLocalLogin()" style="margin: 5px; width: 100%;">
+                Demo đăng nhập (Mô phỏng VNPT)
+              </button>
               <button type="button" class="btn btn-sm btn-info" onclick="redirectToVNPT()" style="margin: 5px; width: 100%;">
-                Đăng nhập trực tiếp tại VNPT CAS
+                Mở VNPT CAS trong tab mới
               </button>
               <button type="button" class="btn btn-sm btn-warning" onclick="testConnection()" style="margin: 5px; width: 100%;">
                 Kiểm tra kết nối VNPT
@@ -389,18 +399,152 @@
         return;
       }
       
-      showAlert('Đang chuyển hướng đến trang đăng nhập VNPT...', 'info');
+      showAlert('Đang kết nối đến VNPT CAS...', 'info');
       
-      // Store credentials temporarily for demo purposes
-      sessionStorage.setItem('temp_username', username);
-      sessionStorage.setItem('temp_password', password);
+      // Try to connect to VNPT CAS with real credentials
+      connectToVNPTCAS(username, password);
+    }
+    
+    function connectToVNPTCAS(username, password) {
+      // Method 1: Try AJAX with CORS proxy
+      tryAJAXWithProxy(username, password);
+    }
+    
+    function tryAJAXWithProxy(username, password) {
+      // Use a CORS proxy to bypass CORS restrictions
+      const corsProxy = 'https://api.allorigins.win/raw?url=';
+      const vnptUrl = encodeURIComponent('https://id.vnpt.com.vn/cas/login');
       
-      // Redirect to VNPT CAS with service parameter
+      $.ajax({
+        url: corsProxy + vnptUrl,
+        method: 'GET',
+        timeout: 10000,
+        success: function(html) {
+          console.log('✅ Successfully connected to VNPT CAS');
+          
+          // Extract tokens from VNPT response
+          const lt = extractInputValue(html, 'lt');
+          const execution = extractInputValue(html, 'execution');
+          
+          if (lt && execution) {
+            console.log('🔐 Extracted VNPT tokens:', { lt, execution });
+            submitToVNPT(username, password, lt, execution);
+          } else {
+            console.log('❌ Could not extract VNPT tokens');
+            showAlert('Không thể lấy thông tin xác thực từ VNPT. Vui lòng thử lại.', 'danger');
+          }
+        },
+        error: function(xhr, status, error) {
+          console.error('❌ CORS Proxy failed:', error);
+          showAlert('Không thể kết nối đến VNPT CAS. Thử phương pháp khác...', 'warning');
+          
+          // Fallback: Try direct form submission
+          tryDirectFormSubmission(username, password);
+        }
+      });
+    }
+    
+    function submitToVNPT(username, password, lt, execution) {
+      const corsProxy = 'https://api.allorigins.win/raw?url=';
+      const vnptUrl = encodeURIComponent('https://id.vnpt.com.vn/cas/login?service=' + encodeURIComponent(getServiceUrl()));
+      
+      const formData = {
+        username: username,
+        password: password,
+        lt: lt,
+        execution: execution,
+        _eventId: 'submit'
+      };
+      
+      // Convert to URL-encoded string
+      const postData = Object.keys(formData)
+        .map(key => key + '=' + encodeURIComponent(formData[key]))
+        .join('&');
+      
+      $.ajax({
+        url: corsProxy + vnptUrl,
+        method: 'POST',
+        data: postData,
+        contentType: 'application/x-www-form-urlencoded',
+        timeout: 15000,
+        success: function(responseHtml) {
+          console.log('🔐 VNPT login response received');
+          
+          // Check login result
+          const loginResult = checkLoginSuccess(responseHtml);
+          console.log('🔐 VNPT login result:', loginResult);
+          
+          if (loginResult.success) {
+            if (loginResult.needsOTP) {
+              showAlert('Xác thực VNPT thành công! Đang chuyển sang bước OTP...', 'success');
+              setTimeout(() => {
+                proceedToOTP();
+              }, 1000);
+            } else {
+              showAlert('Đăng nhập VNPT thành công! Đang chuyển hướng...', 'success');
+              setTimeout(() => {
+                window.location.href = getServiceUrl();
+              }, 1500);
+            }
+          } else {
+            showAlert('Sai tài khoản hoặc mật khẩu VNPT', 'danger');
+            $('#password').val('');
+          }
+        },
+        error: function(xhr, status, error) {
+          console.error('❌ VNPT login failed:', error);
+          showAlert('Lỗi kết nối VNPT. Thử phương pháp khác...', 'warning');
+          tryDirectFormSubmission(username, password);
+        }
+      });
+    }
+    
+    function tryDirectFormSubmission(username, password) {
+      showAlert('Đang tạo form submit trực tiếp đến VNPT...', 'info');
+      
+      // Create a form that submits directly to VNPT
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = 'https://id.vnpt.com.vn/cas/login?service=' + encodeURIComponent(getServiceUrl());
+      form.target = '_blank';
+      form.style.display = 'none';
+      
+      // Add credentials
+      const usernameField = document.createElement('input');
+      usernameField.name = 'username';
+      usernameField.value = username;
+      
+      const passwordField = document.createElement('input');
+      passwordField.name = 'password';
+      passwordField.value = password;
+      
+      const ltField = document.createElement('input');
+      ltField.name = 'lt';
+      ltField.value = $('#loginTicket').val();
+      
+      const executionField = document.createElement('input');
+      executionField.name = 'execution';
+      executionField.value = $('#executionId').val();
+      
+      const eventField = document.createElement('input');
+      eventField.name = '_eventId';
+      eventField.value = 'submit';
+      
+      form.appendChild(usernameField);
+      form.appendChild(passwordField);
+      form.appendChild(ltField);
+      form.appendChild(executionField);
+      form.appendChild(eventField);
+      
+      document.body.appendChild(form);
+      form.submit();
+      
+      showAlert('Đã mở tab mới để đăng nhập VNPT. Vui lòng hoàn thành đăng nhập ở tab đó.', 'success');
+      
+      // Clean up
       setTimeout(() => {
-        const serviceUrl = encodeURIComponent(getServiceUrl());
-        const vnptUrl = `https://id.vnpt.com.vn/cas/login?service=${serviceUrl}`;
-        window.location.href = vnptUrl;
-      }, 1500);
+        document.body.removeChild(form);
+      }, 1000);
     }
     
     function loadLoginPageAndSubmit(username, password) {
@@ -656,6 +800,27 @@
       // Get service URL from URL parameters or default
       const urlParams = new URLSearchParams(window.location.search);
       return urlParams.get('service') || 'https://ebacson.github.io/autocell/hw.html';
+    }
+    
+    function useLocalLogin() {
+      const username = $('#username').val().trim();
+      const password = $('#password').val().trim();
+      
+      if (!username || !password) {
+        showAlert('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu', 'danger');
+        return;
+      }
+      
+      showAlert('Đang xác thực thông tin đăng nhập...', 'info');
+      
+      // Simulate VNPT login process
+      setTimeout(() => {
+        // Always proceed to OTP for demo
+        showAlert('Xác thực thành công! Đang chuyển sang bước OTP...', 'success');
+        setTimeout(() => {
+          proceedToOTP();
+        }, 1000);
+      }, 2000);
     }
     
     function redirectToVNPT() {
