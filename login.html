@@ -252,6 +252,7 @@
                 <button type="button" class="btn-submit" onclick="validateCredentials()">
                   ĐĂNG NHẬP
                 </button>
+                
               </div>
               
               <!-- Step 2: OTP Verification -->
@@ -386,11 +387,116 @@
       const submitBtn = $('.btn-submit');
       submitBtn.prop('disabled', true).text('ĐANG XỬ LÝ...');
       
-      showAlert('Đang kết nối đến VNPT CAS...', 'info');
+      showAlert('Đang xác thực thông tin đăng nhập...', 'info');
       
-      // Use same approach as Android Java code - direct HTTP calls
-      loginWithVNPTLikeAndroid(username, password, submitBtn);
+      // Simple validation approach - check credentials first
+      validateCredentialsSimple(username, password, submitBtn);
     }
+    
+    function validateCredentialsSimple(username, password, submitBtn) {
+      console.log('🔐 Validating credentials with VNPT CAS...');
+      
+      // Always validate with real VNPT CAS
+      validateWithVNPT(username, password, submitBtn);
+    }
+    
+    function validateWithVNPT(username, password, submitBtn) {
+      console.log('🔐 Attempting VNPT validation...');
+      
+      // Try to validate with VNPT CAS using direct form submission
+      tryVNPTValidation(username, password, submitBtn);
+    }
+    
+    function tryVNPTValidation(username, password, submitBtn) {
+      console.log('🔐 Starting VNPT validation with form submission...');
+      
+      // Create hidden form to submit directly to VNPT CAS
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = 'https://id.vnpt.com.vn/cas/login?service=' + encodeURIComponent(getServiceUrl());
+      form.target = 'vnpt_validation_frame';
+      form.style.display = 'none';
+      
+      // Add form fields
+      const fields = {
+        'username': username,
+        'password': password,
+        'lt': $('#loginTicket').val(),
+        'execution': $('#executionId').val(),
+        '_eventId': 'submit'
+      };
+      
+      for (const [name, value] of Object.entries(fields)) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+      }
+      
+      // Create iframe to capture response
+      const iframe = document.createElement('iframe');
+      iframe.name = 'vnpt_validation_frame';
+      iframe.style.display = 'none';
+      iframe.onload = function() {
+        setTimeout(() => {
+          checkVNPTValidationResult(iframe, submitBtn);
+        }, 3000);
+      };
+      
+      document.body.appendChild(iframe);
+      document.body.appendChild(form);
+      
+      console.log('🔐 Submitting to VNPT CAS for validation...');
+      showAlert('Đang xác thực với VNPT CAS...', 'info');
+      
+      form.submit();
+      
+      // Clean up after timeout
+      setTimeout(() => {
+        if (document.body.contains(form)) {
+          document.body.removeChild(form);
+        }
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 15000);
+    }
+    
+    function checkVNPTValidationResult(iframe, submitBtn) {
+      try {
+        console.log('🔐 Checking VNPT validation result...');
+        
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        const html = iframeDoc.documentElement.outerHTML;
+        
+        console.log('📄 VNPT validation response length:', html.length);
+        
+        if (html.length < 100) {
+          console.log('⚠️ Response too short');
+          showLoginError('Không thể nhận phản hồi từ VNPT CAS', submitBtn);
+          return;
+        }
+        
+        // Check login result
+        const loginResult = checkVNPTLoginSuccess(html);
+        console.log('🔐 VNPT validation result:', loginResult);
+        
+        if (loginResult.success) {
+          showLoginSuccess('Xác thực VNPT thành công! Đang chuyển hướng...', submitBtn);
+        } else {
+          showLoginError(loginResult.errorMessage || 'Sai tên đăng nhập hoặc mật khẩu VNPT', submitBtn);
+        }
+        
+      } catch (e) {
+        console.log('🔐 Cannot access iframe content due to CORS');
+        
+        // If we can't read iframe content, try alternative approach
+        showAlert('Không thể đọc phản hồi từ VNPT CAS do giới hạn trình duyệt. Vui lòng thử lại.', 'warning');
+        submitBtn.prop('disabled', false).text('ĐĂNG NHẬP');
+      }
+    }
+    
     
     function loginWithVNPTLikeAndroid(username, password, submitBtn) {
       console.log('🔐 Starting VNPT login like Android code...');
