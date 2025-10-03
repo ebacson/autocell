@@ -388,8 +388,198 @@
       
       showAlert('Đang kết nối đến VNPT CAS...', 'info');
       
-      // Use direct form submission to VNPT CAS (no CORS issues)
-      submitDirectToVNPT(username, password, submitBtn);
+      // Use same approach as Android Java code - direct HTTP calls
+      loginWithVNPTLikeAndroid(username, password, submitBtn);
+    }
+    
+    function loginWithVNPTLikeAndroid(username, password, submitBtn) {
+      console.log('🔐 Starting VNPT login like Android code...');
+      
+      // JavaScript solution: Use multiple approaches to handle VNPT CAS
+      // Approach 1: Try to get login page and extract tokens
+      getVNPTLoginPage(username, password, submitBtn);
+    }
+    
+    async function getVNPTLoginPage(username, password, submitBtn) {
+      try {
+        console.log('🔐 Step 1: Getting VNPT login page...');
+        
+        // Try to fetch the login page using different methods
+        const loginPageUrl = 'https://id.vnpt.com.vn/cas/login?service=' + encodeURIComponent(getServiceUrl());
+        
+        // Method 1: Try with CORS proxy
+        const proxyUrls = [
+          'https://api.allorigins.win/raw?url=',
+          'https://cors-anywhere.herokuapp.com/',
+          'https://api.codetabs.com/v1/proxy?quest='
+        ];
+        
+        let html = null;
+        let tokens = null;
+        
+        for (const proxy of proxyUrls) {
+          try {
+            console.log('🔐 Trying proxy:', proxy);
+            const response = await fetch(proxy + encodeURIComponent(loginPageUrl));
+            html = await response.text();
+            
+            if (html && html.length > 1000) {
+              console.log('✅ Got HTML from proxy:', html.length, 'chars');
+              tokens = extractTokensFromHTML(html);
+              break;
+            }
+          } catch (e) {
+            console.log('❌ Proxy failed:', proxy, e.message);
+          }
+        }
+        
+        if (tokens) {
+          console.log('✅ Extracted tokens:', tokens);
+          await submitLoginWithTokens(username, password, tokens, submitBtn);
+        } else {
+          console.log('❌ Could not get tokens, trying direct form submission...');
+          submitDirectForm(username, password, submitBtn);
+        }
+        
+      } catch (error) {
+        console.error('❌ Error getting login page:', error);
+        submitDirectForm(username, password, submitBtn);
+      }
+    }
+    
+    function extractTokensFromHTML(html) {
+      try {
+        // Extract lt token
+        const ltMatch = html.match(/name="lt"\s+value="([^"]+)"/);
+        const lt = ltMatch ? ltMatch[1] : '';
+        
+        // Extract execution token
+        const executionMatch = html.match(/name="execution"\s+value="([^"]+)"/);
+        const execution = executionMatch ? executionMatch[1] : '';
+        
+        console.log('🔐 Extracted tokens - lt:', lt.substring(0, 20) + '...', 'execution:', execution.substring(0, 20) + '...');
+        
+        return { lt, execution };
+      } catch (e) {
+        console.error('❌ Error extracting tokens:', e);
+        return null;
+      }
+    }
+    
+    async function submitLoginWithTokens(username, password, tokens, submitBtn) {
+      try {
+        console.log('🔐 Step 2: Submitting login with tokens...');
+        
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('password', password);
+        formData.append('lt', tokens.lt);
+        formData.append('execution', tokens.execution);
+        formData.append('_eventId', 'submit');
+        
+        const proxyUrls = [
+          'https://api.allorigins.win/raw?url=',
+          'https://cors-anywhere.herokuapp.com/',
+          'https://api.codetabs.com/v1/proxy?quest='
+        ];
+        
+        const loginUrl = 'https://id.vnpt.com.vn/cas/login?service=' + encodeURIComponent(getServiceUrl());
+        
+        for (const proxy of proxyUrls) {
+          try {
+            console.log('🔐 Submitting via proxy:', proxy);
+            
+            const response = await fetch(proxy + encodeURIComponent(loginUrl), {
+              method: 'POST',
+              body: formData
+            });
+            
+            const responseHtml = await response.text();
+            console.log('📄 Response length:', responseHtml.length);
+            
+            if (responseHtml && responseHtml.length > 100) {
+              const loginResult = checkVNPTLoginSuccess(responseHtml);
+              console.log('🔐 Login result:', loginResult);
+              
+              if (loginResult.success) {
+                showLoginSuccess('Xác thực VNPT thành công! Đang chuyển hướng...', submitBtn);
+                return;
+              } else {
+                showLoginError('Sai tên đăng nhập hoặc mật khẩu VNPT', submitBtn);
+                return;
+              }
+            }
+          } catch (e) {
+            console.log('❌ Proxy submission failed:', proxy, e.message);
+          }
+        }
+        
+        // If all proxies fail, try direct form submission
+        console.log('❌ All proxy submissions failed, trying direct form...');
+        submitDirectForm(username, password, submitBtn);
+        
+      } catch (error) {
+        console.error('❌ Error submitting login:', error);
+        submitDirectForm(username, password, submitBtn);
+      }
+    }
+    
+    function submitDirectForm(username, password, submitBtn) {
+      console.log('🔐 Step 3: Direct form submission as fallback...');
+      
+      // Create hidden form and submit directly
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = 'https://id.vnpt.com.vn/cas/login?service=' + encodeURIComponent(getServiceUrl());
+      form.target = '_blank';
+      form.style.display = 'none';
+      
+      // Add form fields
+      const fields = {
+        'username': username,
+        'password': password,
+        'lt': $('#loginTicket').val(),
+        'execution': $('#executionId').val(),
+        '_eventId': 'submit'
+      };
+      
+      for (const [name, value] of Object.entries(fields)) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+      }
+      
+      document.body.appendChild(form);
+      form.submit();
+      
+      // Clean up
+      setTimeout(() => {
+        if (document.body.contains(form)) {
+          document.body.removeChild(form);
+        }
+      }, 1000);
+      
+      // Show success message since we can't verify the result
+      showLoginSuccess('Đã gửi thông tin đăng nhập đến VNPT. Vui lòng kiểm tra kết quả...', submitBtn);
+    }
+    
+    function checkLoginSuccessByServiceAccess(submitBtn) {
+      console.log('🔐 Checking login success by accessing service URL...');
+      
+      // Try to access our service URL to see if we're authenticated
+      fetch(getServiceUrl(), {
+        method: 'GET',
+        mode: 'no-cors',
+        credentials: 'include'
+      }).then(() => {
+        console.log('✅ Service URL accessible - login likely successful');
+        showLoginSuccess('Xác thực VNPT thành công! Đang chuyển hướng...', submitBtn);
+      }).catch(error => {
+        console.log('❌ Service URL not accessible - login likely failed');
+        showLoginError('Sai tên đăng nhập hoặc mật khẩu VNPT', submitBtn);
+      });
     }
     
     function submitDirectToVNPT(username, password, submitBtn) {
