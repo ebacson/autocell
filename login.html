@@ -208,8 +208,8 @@
           <div class="login-form" id="login">
             <img class="primaryImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMjAiIGZpbGw9IiM2NjdlZWEiLz4KPHN2ZyB4PSI0MCIgeT0iNDAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+" alt="CAS Logo">
             
-            <!-- Step Indicator -->
-            <div class="step-indicator">
+            <!-- Step Indicator - Hidden since we skip OTP -->
+            <div class="step-indicator" style="display: none;">
               <div class="step active" id="step1">1</div>
               <div class="step" id="step2">2</div>
             </div>
@@ -238,7 +238,7 @@
                 </div>
                 
                 <button type="button" class="btn-submit" onclick="validateCredentials()">
-                  TIẾP TỤC
+                  ĐĂNG NHẬP
                 </button>
               </div>
               
@@ -293,6 +293,7 @@
               <small style="color: #7f8c8d;">
                 • Sử dụng CORS proxy để kết nối VNPT CAS<br>
                 • Xác thực username/password thật của VNPT<br>
+                • Bỏ qua OTP, chuyển thẳng về trang tra cứu<br>
                 • Nếu proxy fail, sẽ mở tab mới để đăng nhập
               </small><br><br>
               
@@ -475,17 +476,11 @@
           console.log('🔐 VNPT login result:', loginResult);
           
           if (loginResult.success) {
-            if (loginResult.needsOTP) {
-              showAlert('Xác thực VNPT thành công! Đang chuyển sang bước OTP...', 'success');
-              setTimeout(() => {
-                proceedToOTP();
-              }, 1000);
-            } else {
-              showAlert('Đăng nhập VNPT thành công! Đang chuyển hướng...', 'success');
-              setTimeout(() => {
-                window.location.href = getServiceUrl();
-              }, 1500);
-            }
+            // Skip OTP and redirect directly
+            showAlert('Đăng nhập VNPT thành công! Đang chuyển hướng...', 'success');
+            setTimeout(() => {
+              window.location.href = getServiceUrl();
+            }, 1500);
           } else {
             showAlert('Sai tài khoản hoặc mật khẩu VNPT', 'danger');
             $('#password').val('');
@@ -788,8 +783,8 @@
       
       // Check for OTP form (also success) - same as Android
       if (html.includes('validate_pass_otp') || html.includes('Xin chào') || html.includes('Nhập mã OTP') || html.includes('otp')) {
-        console.log('✅ Found OTP form - login successful, needs OTP');
-        return { success: true, needsOTP: true };
+        console.log('✅ Found OTP form - login successful, but skipping OTP');
+        return { success: true, needsOTP: false }; // Skip OTP
       }
       
       console.log('❌ No clear success/failure indicators found');
