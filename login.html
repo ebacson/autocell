@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="refresh" content="300">
+  <title>VNPT | CAS &#8211; Central Authentication Service</title>
+
+  <meta name="_csrf" content=""/>
+  <meta name="_csrf_header" content=""/>
+
+  <!-- Bootstrap core CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+  <link href="https://cdn.jsdelivr.net/npm/ie10-viewport-bug-workaround@1.0.3/dist/ie10-viewport-bug-workaround.min.css" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .login-form {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 15px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+      margin: 50px auto;
+      max-width: 450px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .primaryImage {
+      width: 120px;
+      height: auto;
+      display: block;
+      margin: 0 auto 30px;
+    }
+    
+    .form-control {
+      border-radius: 25px;
+      border: 2px solid #e1e5e9;
+      padding: 12px 20px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      margin-bottom: 15px;
+    }
+    
+    .form-control:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .btn-submit {
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      border: none;
+      border-radius: 25px;
+      padding: 12px 30px;
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+      width: 100%;
+      transition: all 0.3s ease;
+      margin-top: 20px;
+    }
+    
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+    
+    .otp-section {
+      display: none;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e1e5e9;
+    }
+    
+    .otp-section.show {
+      display: block;
+      animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .support-info {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 30px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    .support-info b {
+      color: #e74c3c;
+    }
+    
+    .support-info a {
+      color: #667eea;
+      text-decoration: none;
+    }
+    
+    .support-info a:hover {
+      text-decoration: underline;
+    }
+    
+    .footer {
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      text-align: center;
+      padding: 20px;
+      margin-top: 50px;
+    }
+    
+    .footer span {
+      color: #e74c3c;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .alert {
+      border-radius: 10px;
+      border: none;
+      margin-bottom: 20px;
+    }
+    
+    .alert-danger {
+      background: rgba(231, 76, 60, 0.1);
+      color: #e74c3c;
+    }
+    
+    .alert-success {
+      background: rgba(46, 204, 113, 0.1);
+      color: #27ae60;
+    }
+    
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+    
+    .step {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #e1e5e9;
+      color: #6c757d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 10px;
+      font-weight: bold;
+    }
+    
+    .step.active {
+      background: #667eea;
+      color: white;
+    }
+    
+    .step.completed {
+      background: #27ae60;
+      color: white;
+    }
+  </style>
+</head>
+
+<body id="cas" class="login">
+  <div id="wrap">
+    <div id="main" class="login">
+      <div id="container">
+        <div id="content">
+          <!-- Navigation -->
+          <nav class="navbar navbar-inverse">
+            <div class="container-fluid">
+              <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false">
+                  <span class="sr-only">Toggle navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">VNPT CAS</a>
+              </div>
+              <div id="navbar" class="collapse navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                  <li><a href="https://www.vnpt.vn">VNPT Group</a></li>
+                  <li><a href="https://www.vnptnet.vn">VNPT Net</a></li>
+                </ul>
+              </div>
+            </div>
+          </nav>
+
+          <!-- Login Form -->
+          <div class="login-form" id="login">
+            <img class="primaryImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMjAiIGZpbGw9IiM2NjdlZWEiLz4KPHN2ZyB4PSI0MCIgeT0iNDAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01IDEuNDEtMS40MUwxMCAxNC4xN2w3LjU5LTcuNTlMMTkgOGwtOSA5eiIvPgo8L3N2Zz4KPC9zdmc+" alt="CAS Logo">
+            
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+              <div class="step active" id="step1">1</div>
+              <div class="step" id="step2">2</div>
+            </div>
+            
+            <!-- Alert Messages -->
+            <div id="alertContainer"></div>
+            
+            <form id="loginForm" method="post">
+              <!-- Step 1: Username and Password -->
+              <div id="step1Content">
+                <div class="form-group">
+                  <input id="username" name="username" class="form-control required" 
+                         placeholder="Tên đăng nhập" type="text" required autocomplete="username"/>
+                </div>
+                
+                <div class="form-group">
+                  <input id="password" name="password" class="form-control required" 
+                         placeholder="Mật khẩu" type="password" required autocomplete="current-password"/>
+                </div>
+                
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" id="rememberMe" name="rememberMe" value="true"/>
+                    Ghi nhớ đăng nhập
+                  </label>
+                </div>
+                
+                <button type="button" class="btn-submit" onclick="validateCredentials()">
+                  TIẾP TỤC
+                </button>
+              </div>
+              
+              <!-- Step 2: OTP Verification -->
+              <div id="step2Content" class="otp-section">
+                <h4 style="text-align: center; margin-bottom: 20px;">Xác thực OTP</h4>
+                <p style="text-align: center; color: #6c757d; margin-bottom: 20px;">
+                  Mã OTP đã được gửi đến số điện thoại của bạn
+                </p>
+                
+                <div class="form-group">
+                  <input id="otpCode" name="otpCode" class="form-control required" 
+                         placeholder="Nhập mã OTP (6 số)" type="text" maxlength="6" 
+                         pattern="[0-9]{6}" required/>
+                </div>
+                
+                <div class="form-group text-center">
+                  <button type="button" class="btn btn-link" onclick="resendOTP()" id="resendBtn">
+                    Gửi lại mã OTP
+                  </button>
+                  <span id="countdown" style="display: none; color: #6c757d;"></span>
+                </div>
+                
+                <button type="submit" class="btn-submit">
+                  ĐĂNG NHẬP
+                </button>
+                
+                <button type="button" class="btn btn-link" onclick="goBackToStep1()" style="width: 100%; margin-top: 10px;">
+                  Quay lại
+                </button>
+              </div>
+              
+              <!-- Hidden fields -->
+              <input type="hidden" name="lt" value="" id="loginTicket"/>
+              <input type="hidden" name="execution" value="" id="executionId"/>
+              <input type="hidden" name="_eventId" value="submit"/>
+            </form>
+            
+            <!-- Support Information -->
+            <div class="support-info">
+              <strong>Thông tin hỗ trợ:</strong><br>
+              • Số điện thoại hỗ trợ: <b>1800 1555 Nhánh 3</b><br>
+              • Email hỗ trợ: <b>hotro.email@vnpt.vn</b><br>
+              • Quên mật khẩu: Soạn tin <b>MK [Tên đăng nhập]</b> gửi <b>293</b><br>
+              • Đổi mật khẩu: <a href="https://email.vnpt.vn/doimatkhau/">Truy cập tại đây</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="row">
+        <div class="col-xs-12">
+          Số điện thoại Hỗ trợ Email/Xác thực tập trung: 
+          <span>18001555 Nhánh 3</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js"></script>
+  
+  <script>
+    let currentStep = 1;
+    let otpTimer = null;
+    let resendCountdown = 0;
+    
+    // Initialize page
+    $(document).ready(function() {
+      generateSecurityTokens();
+      setupEventListeners();
+    });
+    
+    function setupEventListeners() {
+      // Auto-format OTP input
+      $('#otpCode').on('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        if (this.value.length === 6) {
+          $(this).addClass('form-control-success');
+        } else {
+          $(this).removeClass('form-control-success');
+        }
+      });
+      
+      // Enter key handling
+      $('#username, #password').on('keypress', function(e) {
+        if (e.which === 13) {
+          validateCredentials();
+        }
+      });
+      
+      $('#otpCode').on('keypress', function(e) {
+        if (e.which === 13) {
+          $('#loginForm').submit();
+        }
+      });
+    }
+    
+    function generateSecurityTokens() {
+      // Generate random tokens for security
+      const loginTicket = 'LT-' + Math.random().toString(36).substr(2, 9) + '-' + Math.random().toString(36).substr(2, 9);
+      const executionId = Math.random().toString(36).substr(2, 9) + '-' + Math.random().toString(36).substr(2, 9);
+      
+      $('#loginTicket').val(loginTicket);
+      $('#executionId').val(executionId);
+    }
+    
+    function validateCredentials() {
+      const username = $('#username').val().trim();
+      const password = $('#password').val();
+      
+      if (!username || !password) {
+        showAlert('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu', 'danger');
+        return;
+      }
+      
+      // Simulate credential validation
+      showAlert('Đang xác thực thông tin đăng nhập...', 'info');
+      
+      // Simulate API call delay
+      setTimeout(() => {
+        // In real implementation, this would be an AJAX call to your backend
+        if (username && password) {
+          proceedToOTP();
+        } else {
+          showAlert('Tên đăng nhập hoặc mật khẩu không đúng', 'danger');
+        }
+      }, 1500);
+    }
+    
+    function proceedToOTP() {
+      // Hide step 1 content and show step 2
+      $('#step1Content').hide();
+      $('#step2Content').addClass('show');
+      
+      // Update step indicator
+      $('#step1').removeClass('active').addClass('completed');
+      $('#step2').addClass('active');
+      
+      // Focus on OTP input
+      setTimeout(() => {
+        $('#otpCode').focus();
+      }, 300);
+      
+      // Start resend countdown
+      startResendCountdown();
+      
+      showAlert('Mã OTP đã được gửi đến số điện thoại của bạn', 'success');
+    }
+    
+    function startResendCountdown() {
+      resendCountdown = 60; // 60 seconds
+      $('#resendBtn').prop('disabled', true).hide();
+      $('#countdown').show();
+      
+      otpTimer = setInterval(() => {
+        $('#countdown').text(`Gửi lại mã sau ${resendCountdown} giây`);
+        resendCountdown--;
+        
+        if (resendCountdown < 0) {
+          clearInterval(otpTimer);
+          $('#resendBtn').prop('disabled', false).show();
+          $('#countdown').hide();
+        }
+      }, 1000);
+    }
+    
+    function resendOTP() {
+      showAlert('Đang gửi lại mã OTP...', 'info');
+      
+      // Simulate OTP resend
+      setTimeout(() => {
+        showAlert('Mã OTP mới đã được gửi', 'success');
+        startResendCountdown();
+      }, 1000);
+    }
+    
+    function goBackToStep1() {
+      // Show step 1 content and hide step 2
+      $('#step1Content').show();
+      $('#step2Content').removeClass('show');
+      
+      // Update step indicator
+      $('#step1').addClass('active').removeClass('completed');
+      $('#step2').removeClass('active');
+      
+      // Clear OTP input
+      $('#otpCode').val('');
+      
+      // Clear timer
+      if (otpTimer) {
+        clearInterval(otpTimer);
+      }
+      $('#resendBtn').prop('disabled', false).show();
+      $('#countdown').hide();
+    }
+    
+    function showAlert(message, type) {
+      const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible" role="alert">
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          ${message}
+        </div>
+      `;
+      
+      $('#alertContainer').html(alertHtml);
+      
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => {
+        $('.alert').fadeOut();
+      }, 5000);
+    }
+    
+    // Form submission handler
+    $('#loginForm').on('submit', function(e) {
+      e.preventDefault();
+      
+      const otpCode = $('#otpCode').val().trim();
+      
+      if (!otpCode || otpCode.length !== 6) {
+        showAlert('Vui lòng nhập mã OTP hợp lệ (6 số)', 'danger');
+        return;
+      }
+      
+      // Simulate OTP validation
+      showAlert('Đang xác thực mã OTP...', 'info');
+      
+      setTimeout(() => {
+        // In real implementation, this would validate the OTP with your backend
+        if (otpCode === '123456') { // Demo OTP for testing
+          showAlert('Đăng nhập thành công! Đang chuyển hướng...', 'success');
+          
+          // Redirect to dashboard or intended service
+          setTimeout(() => {
+            window.location.href = 'dashboard.html'; // Change this to your target URL
+          }, 2000);
+        } else {
+          showAlert('Mã OTP không đúng. Vui lòng thử lại', 'danger');
+        }
+      }, 1500);
+    });
+    
+    // CAPS LOCK detection
+    $('#password').on('keypress', function(e) {
+      const capsLockOn = e.getModifierState && e.getModifierState('CapsLock');
+      if (capsLockOn) {
+        showAlert('Caps Lock đang bật!', 'warning');
+      }
+    });
+  </script>
+</body>
+</html>
