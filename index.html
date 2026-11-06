@@ -84,6 +84,12 @@
       width: 16px; height: 16px; border-radius: 50%;
       border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35);
     }
+    .user-pop { font-size: 12px; line-height: 1.35; max-height: 340px; overflow: auto; }
+    .user-pop h3 { margin: 0 0 2px; font-size: 14px; }
+    .user-pop .sec { margin: 8px 0 2px; font-size: 11px; font-weight: 700; color: #667085; }
+    .user-pop .row { display: flex; justify-content: space-between; gap: 10px; }
+    .user-pop .row span { color: #667085; }
+    .user-pop .station { white-space: pre-wrap; margin-top: 2px; }
     .empty { padding: 16px; color: var(--muted); font-size: 13px; }
     @media (max-width: 800px) {
       #wrap { flex-direction: column; }
@@ -373,8 +379,24 @@
         lat, lng,
         located: lat != null && lng != null && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !(lat === 0 && lng === 0),
         updated,
-        online: updated > 0 && (Date.now() - updated) <= ONLINE_MS
+        online: updated > 0 && (Date.now() - updated) <= ONLINE_MS,
+        net,
+        cell: net.cellInfo || {},
+        sig: net.signalInfo || {},
+        station: net.stationCoords || {}
       };
+    }
+
+    function field(obj, key) {
+      if (!obj || obj[key] === undefined || obj[key] === null || obj[key] === "") return null;
+      const n = Number(obj[key]);
+      if (Number.isFinite(n)) return n === 2147483647 ? null : n;
+      return obj[key];
+    }
+
+    function popRow(label, value, unit) {
+      if (value === null || value === undefined || value === "") return "";
+      return `<div class="row"><span>${label}</span><b>${esc(value)}${unit || ""}</b></div>`;
     }
 
     function visible(u) {
@@ -388,12 +410,78 @@
     }
 
     function popup(u) {
-      return `<b>${esc(u.name)}</b><br>
-        <span style="color:${u.online ? "#067647" : "#667085"}">${u.online ? "Online" : "Offline"}</span>
-        · ${esc(u.platform || "—")}<br>
-        ${esc(u.network || "Chưa có mạng")}<br>
-        ${esc(u.phone || "")}<br>
-        <span style="color:#667085">${esc(ago(u.updated))}</span>`;
+      const cell = u.cell || {};
+      const sig = u.sig || {};
+      const st = u.station || {};
+      const net = u.net || {};
+      const tech = field(cell, "technology") || field(sig, "technology") || "";
+      const nsa = String(net.networkType || "").includes("5G") || field(sig, "ssRsrp") != null
+        || field(cell, "connectionType") === "5G NSA";
+      const node = field(cell, "gNodeBId") ?? field(cell, "eNodeBId") ?? field(cell, "rncId");
+      const nodeLabel = field(cell, "gNodeBId") != null ? "gNodeB" : field(cell, "eNodeBId") != null ? "eNodeB" : "Node";
+      const channel = field(cell, "nrarfcn") ?? field(cell, "earfcn") ?? field(cell, "uarfcn") ?? field(cell, "arfcn");
+      const channelLabel = field(cell, "nrarfcn") != null ? "NRARFCN" : field(cell, "earfcn") != null ? "EARFCN" : field(cell, "uarfcn") != null ? "UARFCN" : "ARFCN";
+      const pci = field(cell, "pci") ?? field(cell, "psc");
+      const pciLabel = field(cell, "psc") != null && field(cell, "pci") == null ? "PSC" : "PCI";
+      const area = field(cell, "tac") ?? field(cell, "lac");
+      const areaLabel = field(cell, "tac") != null ? "TAC" : "LAC";
+      const slat = field(st, "lat");
+      const slng = field(st, "long");
+      let distance = null;
+      if (u.located && slat != null && slng != null) {
+        const meters = map.distance([u.lat, u.lng], [slat, slng]);
+        distance = meters < 1000 ? Math.round(meters) + " m" : (meters / 1000).toFixed(2) + " km";
+      }
+      const when = u.updated
+        ? new Date(u.updated).toLocaleString("vi-VN", { hour12: false }) + " · " + ago(u.updated)
+        : "—";
+      const stationText = net.stationInfo ? `<div class="station">${esc(net.stationInfo)}</div>` : "";
+      const idBlock = [
+        popRow("Cell", field(cell, "technologyDetail") || tech),
+        popRow(nodeLabel, node),
+        popRow("Cell ID", field(cell, "cellId")),
+        popRow("CID / NCI", field(cell, "nci") ?? field(cell, "cid")),
+        popRow(areaLabel, area),
+        popRow(pciLabel, pci),
+        popRow("MCC / MNC", (field(cell, "mcc") != null && field(cell, "mnc") != null) ? field(cell, "mcc") + " / " + field(cell, "mnc") : null)
+      ].join("");
+      const freqBlock = [
+        popRow(channelLabel, channel),
+        popRow("DL", field(cell, "dlFrequency"), " MHz"),
+        popRow("UL", field(cell, "ulFrequency"), " MHz"),
+        popRow("BW", field(sig, "bandwidth"), " MHz")
+      ].join("");
+      const antBlock = [
+        popRow("Distance", distance),
+        popRow("Azimuth", field(st, "azimuth"), "°"),
+        popRow("Tilt", field(st, "tilt"), "°"),
+        popRow("Height", field(st, "height"), " m")
+      ].join("");
+      const sigBlock = [
+        popRow("SS-RSRP", field(sig, "ssRsrp"), " dBm"),
+        popRow("SS-RSRQ", field(sig, "ssRsrq"), " dB"),
+        popRow("SS-SINR", field(sig, "ssSinr"), " dB"),
+        popRow(nsa ? "RSRP anchor" : "RSRP", field(sig, "rsrp"), " dBm"),
+        popRow(nsa ? "RSRQ anchor" : "RSRQ", field(sig, "rsrq"), " dB"),
+        popRow(nsa ? "SNR anchor" : "SNR", field(sig, "snr"), " dB"),
+        popRow("RSCP", field(sig, "rscp"), " dBm"),
+        popRow("Ec/No", field(sig, "ecno"), " dB"),
+        popRow("Rx Level", field(sig, "rxLevel"), " dBm"),
+        popRow("RSSI", field(sig, "rssi"), " dBm"),
+        popRow("CQI", field(sig, "cqi")),
+        popRow("TA", field(sig, "timingAdvance"))
+      ].join("");
+      const section = (title, body) => body ? `<div class="sec">${title}</div>${body}` : "";
+      return `<div class="user-pop">
+        <h3>${esc(u.name)}</h3>
+        <div class="row"><span>${u.online ? "Online" : "Offline"} · ${esc(u.platform || "—")}</span><b>${esc(u.phone || "")}</b></div>
+        ${section("Vị trí", popRow("Lat / Long", u.located ? u.lat.toFixed(6) + ", " + u.lng.toFixed(6) : null) + popRow("Accuracy", field(net.currentLocation, "accuracy") != null ? Math.round(field(net.currentLocation, "accuracy")) : null, " m") + popRow("Time", when))}
+        ${section("Mạng", popRow("Network", u.network) + popRow("Service", field(net, "serviceState")) + popRow("Data", field(net, "dataState")) + popRow("DL", field(net, "dlBitrate"), " kbps") + popRow("UL", field(net, "ulBitrate"), " kbps") + stationText)}
+        ${section("Cell", idBlock)}
+        ${section("Tần số", freqBlock)}
+        ${section("Anten", antBlock)}
+        ${section("Tín hiệu", sigBlock)}
+      </div>`;
     }
 
     function draw() {
@@ -413,7 +501,7 @@
           html: `<div class="pin" style="background:${u.online ? "#067647" : "#98a2b3"}"></div>`
         });
         const marker = L.marker([u.lat, u.lng], { icon, title: u.name });
-        marker.bindPopup(popup(u));
+        marker.bindPopup(popup(u), { maxWidth: 340, minWidth: 250, autoPan: true });
         marker.on("click", () => { selected = u.id; renderList(); });
         markers.set(u.id, marker);
         cluster.addLayer(marker);
