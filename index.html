@@ -63,7 +63,12 @@
       width: 28px; height: 28px; line-height: 26px; text-align: center; border-radius: 50%;
       background: #1d4ed8; color: #fff; border: 2px solid #fff; font-size: 11px; font-weight: 700;
     }
-    #list { overflow: auto; flex: 1; }
+    #list { overflow: auto; flex: 1; min-height: 80px; }
+    #detail {
+      display: none; border-top: 1px solid var(--line); overflow: auto;
+      max-height: 52%; padding: 10px 12px; background: #f8fafc;
+    }
+    #detail.show { display: block; }
     .user {
       width: 100%;
       text-align: left;
@@ -84,7 +89,7 @@
       width: 16px; height: 16px; border-radius: 50%;
       border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35);
     }
-    .user-pop { font-size: 12px; line-height: 1.35; max-height: 340px; overflow: auto; }
+    .user-pop { font-size: 12px; line-height: 1.35; }
     .user-pop h3 { margin: 0 0 2px; font-size: 14px; }
     .user-pop .sec { margin: 8px 0 2px; font-size: 11px; font-weight: 700; color: #667085; }
     .user-pop .row { display: flex; justify-content: space-between; gap: 10px; }
@@ -130,6 +135,7 @@
         </div>
         <div id="measureReadout">Bấm “Đo khoảng cách”, rồi chọn các điểm trên bản đồ.</div>
       </div>
+      <div id="detail"></div>
       <div id="list"><div class="empty">Đang tải user…</div></div>
     </aside>
     <div id="map"></div>
@@ -501,8 +507,8 @@
           html: `<div class="pin" style="background:${u.online ? "#067647" : "#98a2b3"}"></div>`
         });
         const marker = L.marker([u.lat, u.lng], { icon, title: u.name });
-        marker.bindPopup(popup(u), { maxWidth: 340, minWidth: 250, autoPan: true });
-        marker.on("click", () => { selected = u.id; renderList(); });
+        marker.bindPopup(popup(u), { maxWidth: 360, minWidth: 260, autoPan: true });
+        marker.on("click", () => { selected = u.id; showUserDetail(u); renderList(); });
         markers.set(u.id, marker);
         cluster.addLayer(marker);
         bounds.push([u.lat, u.lng]);
@@ -512,6 +518,13 @@
         fitted = true;
       }
       renderList(shown);
+    }
+
+    function showUserDetail(u) {
+      const box = $("detail");
+      if (!u) { box.classList.remove("show"); box.innerHTML = ""; return; }
+      box.classList.add("show");
+      box.innerHTML = popup(u);
     }
 
     function renderList(shown) {
@@ -533,6 +546,7 @@
       if (!btn) return;
       selected = btn.dataset.id;
       const u = users.find((x) => x.id === selected);
+      showUserDetail(u);
       renderList();
       if (!u || !u.located) return;
       const marker = markers.get(u.id);
@@ -549,6 +563,7 @@
       users = Object.keys(val).map((id) => mapUser(id, val[id]));
       users.sort((a, b) => (b.online - a.online) || (b.updated - a.updated) || a.name.localeCompare(b.name));
       draw();
+      if (selected) showUserDetail(users.find((u) => u.id === selected) || null);
     }, (err) => {
       $("list").innerHTML = '<div class="empty">Không đọc được user: ' + esc(err.message) + "</div>";
     });
