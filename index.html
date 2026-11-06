@@ -63,24 +63,26 @@
     .tech-filters i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
     .leaflet-control-tools {
       background: #fff;
-      border-radius: 8px;
+      border-radius: 6px;
       box-shadow: 0 1px 5px rgba(0,0,0,.35);
-      padding: 8px;
-      min-width: 168px;
+      padding: 5px 6px;
+      max-width: 280px;
     }
     .leaflet-control-tools .measure-row {
-      display: flex; flex-direction: column; gap: 6px;
+      display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px;
     }
     .leaflet-control-tools button {
-      border: 1px solid var(--line); background: #fff; border-radius: 6px;
-      padding: 7px 8px; cursor: pointer; font-size: 12px; text-align: left; width: 100%;
+      border: 1px solid var(--line); background: #fff; border-radius: 4px;
+      padding: 4px 7px; cursor: pointer; font-size: 11px; line-height: 1.2;
+      white-space: nowrap; width: auto; flex: 0 0 auto;
     }
     .leaflet-control-tools button.on { background: #c2410c; color: #fff; border-color: #c2410c; }
     .leaflet-control-tools #btnClearMap {
       border-color: #fecdca; background: #fff5f5; color: #b42318; font-weight: 650;
     }
     .leaflet-control-tools #measureReadout {
-      margin-top: 6px; font-size: 11px; color: var(--muted); max-width: 180px; line-height: 1.3;
+      margin-top: 4px; font-size: 10px; color: var(--muted); line-height: 1.25;
+      max-width: 260px;
     }
     .seg-tip {
       background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
@@ -224,12 +226,12 @@
         const box = L.DomUtil.create("div", "leaflet-control leaflet-control-tools");
         box.innerHTML = `
           <div class="measure-row">
-            <button id="btnMeasure" type="button">Đo khoảng cách</button>
-            <button id="btnAngle" type="button">Đo góc</button>
+            <button id="btnMeasure" type="button">Khoảng cách</button>
+            <button id="btnAngle" type="button">Góc</button>
             <button id="btnClearMeasure" type="button">Xóa đo</button>
-            <button id="btnClearMap" type="button">Clear map</button>
+            <button id="btnClearMap" type="button">Clear</button>
           </div>
-          <div id="measureReadout">Bấm “Đo khoảng cách” hoặc “Đo góc”.</div>`;
+          <div id="measureReadout">Chọn Khoảng cách hoặc Góc.</div>`;
         L.DomEvent.disableClickPropagation(box);
         L.DomEvent.disableScrollPropagation(box);
         return box;
@@ -645,7 +647,7 @@
           measureTip(prev, Math.round(deg) + "°");
         }
       });
-      const idle = "Bấm “Đo khoảng cách” hoặc “Đo góc”, rồi chọn điểm trên bản đồ.";
+      const idle = "Chọn Khoảng cách hoặc Góc, rồi bấm điểm trên map.";
       if (!measureMode) {
         $("measureReadout").textContent = measurePoints.length ? "" : idle;
         if (!measurePoints.length) $("measureReadout").textContent = idle;
@@ -673,8 +675,8 @@
       measurePoints.length = 0;
       $("btnMeasure").classList.toggle("on", measureMode === "distance");
       $("btnAngle").classList.toggle("on", measureMode === "angle");
-      $("btnMeasure").textContent = measureMode === "distance" ? "Đang đo" : "Đo khoảng cách";
-      $("btnAngle").textContent = measureMode === "angle" ? "Đang đo góc" : "Đo góc";
+      $("btnMeasure").textContent = measureMode === "distance" ? "Đang đo" : "Khoảng cách";
+      $("btnAngle").textContent = measureMode === "angle" ? "Đang đo góc" : "Góc";
       map.getContainer().style.cursor = measureMode ? "crosshair" : "";
       if (measureMode) map.doubleClickZoom.disable();
       else map.doubleClickZoom.enable();
