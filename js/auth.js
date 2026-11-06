@@ -102,13 +102,30 @@ export function watchAuth(callback) {
 
 /** Bắt buộc đăng nhập; nếu chưa có session thì chuyển về trang login. */
 export function requireAuth(callback, loginPage = "auth.html") {
-  return watchAuth((user, role, caps) => {
+  let settled = false;
+  return onAuthStateChanged(auth, async (user) => {
     if (!user) {
       const page = (location.pathname.split("/").pop() || "index.html") + location.search + location.hash;
-      location.replace(loginPage + "?next=" + encodeURIComponent(page));
+      const target = loginPage + (loginPage.includes("?") ? "&" : "?") + "next=" + encodeURIComponent(page);
+      location.replace(target);
       return;
     }
-    callback(user, role, caps);
+    if (settled) {
+      callback(user, null, capsFrom(user.email, null));
+      try {
+        const role = await ensureWebRole(user);
+        callback(user, role, capsFrom(user.email, role));
+      } catch (_) { /* keep first caps */ }
+      return;
+    }
+    settled = true;
+    try {
+      const role = await ensureWebRole(user);
+      callback(user, role, capsFrom(user.email, role));
+    } catch (err) {
+      console.warn(err);
+      callback(user, null, capsFrom(user.email, null));
+    }
   });
 }
 
@@ -148,8 +165,12 @@ export async function login(email, password) {
 }
 
 export async function logout(redirectTo = "auth.html") {
-  await signOut(auth);
-  if (redirectTo) location.replace(redirectTo);
+  try {
+    await signOut(auth);
+  } finally {
+    if (redirectTo) location.replace(redirectTo);
+    else location.replace("auth.html");
+  }
 }
 
 export async function setWebRoleFlags(uid, patch, actorCaps) {

@@ -144,7 +144,7 @@
       <button class="ghost" id="btnLogout" type="button" hidden>Đăng xuất</button>
     </div>
   </header>
-  <main>
+  <main id="appMain" hidden>
     <div class="banner" id="banner"></div>
     <section class="card" id="webRolesCard" style="margin-bottom:12px;padding:12px 14px" hidden>
       <h2 style="margin:0 0 8px;font-size:15px">Tài khoản web</h2>
@@ -415,7 +415,8 @@
     }
 
     $("btnLogout").onclick = async () => {
-      await logout("auth.html?next=users.html");
+      $("appMain").hidden = true;
+      await logout("auth.html");
     };
 
     $("webRolesBody").onclick = async (e) => {
@@ -472,41 +473,45 @@
       }
     };
 
+    let started = false;
     requireAuth((user, role, nextCaps) => {
       authUser = user;
       caps = nextCaps;
+      $("appMain").hidden = false;
       syncAuthUi();
       renderDetail();
-    });
+      if (started) return;
+      started = true;
 
-    watchRoles((list, err) => {
-      if (err) setBanner("Không đọc webRoles: " + err.message);
-      webAccounts = list;
-      renderWebRoles();
-    });
-
-    onValue(ref(db, "users"), (snap) => {
-      const val = snap.val() || {};
-      users = Object.keys(val).map((id) => mapUser(id, val[id]));
-      users.sort((a, b) => {
-        if (a.online !== b.online) return a.online ? -1 : 1;
-        return b.updated - a.updated;
+      watchRoles((list, err) => {
+        if (err) setBanner("Không đọc webRoles: " + err.message);
+        webAccounts = list;
+        renderWebRoles();
       });
-      syncAuthUi();
-      render();
-    }, (err) => {
-      $("loading").textContent = "Không đọc được users: " + err.message;
-    });
 
-    setInterval(() => {
-      if (!users.length) return;
-      let changed = false;
-      users.forEach((u) => {
-        const online = u.updated > 0 && (Date.now() - u.updated) <= ONLINE_MS;
-        if (online !== u.online) { u.online = online; changed = true; }
+      onValue(ref(db, "users"), (snap) => {
+        const val = snap.val() || {};
+        users = Object.keys(val).map((id) => mapUser(id, val[id]));
+        users.sort((a, b) => {
+          if (a.online !== b.online) return a.online ? -1 : 1;
+          return b.updated - a.updated;
+        });
+        syncAuthUi();
+        render();
+      }, (err) => {
+        $("loading").textContent = "Không đọc được users: " + err.message;
       });
-      if (changed) render();
-    }, 5000);
+
+      setInterval(() => {
+        if (!users.length) return;
+        let changed = false;
+        users.forEach((u) => {
+          const online = u.updated > 0 && (Date.now() - u.updated) <= ONLINE_MS;
+          if (online !== u.online) { u.online = online; changed = true; }
+        });
+        if (changed) render();
+      }, 5000);
+    });
   </script>
 </body>
 </html>
