@@ -130,17 +130,16 @@
   <header>
     <div>
       <h1>AutoCell — Quản lý user</h1>
-      <p>Danh sách thiết bị trên Firebase <span class="mono">users</span>. Online = cập nhật mạng trong 30 giây.</p>
       <nav>
         <a href="index.html">Bản đồ</a>
         <a href="users.html" aria-current="page">User</a>
         <a href="about.html">Giới thiệu</a>
-        <a href="auth.html">Đăng nhập</a>
+        <a href="auth.html" id="navLogin">Đăng nhập</a>
       </nav>
     </div>
     <div class="admin-box">
       <span id="adminState" class="pill off">Chưa đăng nhập</span>
-      <a href="auth.html?next=users.html"><button class="primary" id="btnLogin" type="button">Đăng nhập</button></a>
+      <a id="loginWrap" href="auth.html?next=users.html"><button class="primary" id="btnLogin" type="button">Đăng nhập</button></a>
       <button class="ghost" id="btnLogout" type="button" hidden>Đăng xuất</button>
     </div>
   </header>
@@ -381,7 +380,9 @@
     function syncAuthUi() {
       $("adminState").textContent = authUser ? (caps.label + ": " + authUser.email) : "Chưa đăng nhập";
       $("adminState").className = "pill " + (authUser ? "on" : "off");
+      $("loginWrap").hidden = !!authUser;
       $("btnLogin").hidden = !!authUser;
+      $("navLogin").hidden = !!authUser;
       $("btnLogout").hidden = !authUser;
       $("webRolesCard").hidden = !(caps.canGrantSupport || caps.canGrantAdmin);
       renderWebRoles();
