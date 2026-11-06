@@ -490,28 +490,61 @@
       </div>`;
     }
 
+    function pinIcon(online) {
+      return L.divIcon({
+        className: "",
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+        popupAnchor: [0, -10],
+        html: `<div class="pin" style="background:${online ? "#067647" : "#98a2b3"}"></div>`
+      });
+    }
+
+    function refreshOpenPopup(marker, html) {
+      const popup = marker.getPopup();
+      const content = popup && popup.getElement() && popup.getElement().querySelector(".leaflet-popup-content");
+      const top = content ? content.scrollTop : 0;
+      const open = marker.isPopupOpen();
+      marker.setPopupContent(html);
+      if (open && !marker.isPopupOpen()) marker.openPopup();
+      const next = marker.getPopup() && marker.getPopup().getElement();
+      const scroller = next && next.querySelector(".leaflet-popup-content");
+      if (scroller) scroller.scrollTop = top;
+    }
+
     function draw() {
       const shown = users.filter(visible);
       $("nAll").textContent = users.length;
       $("nOn").textContent = users.filter((u) => u.online).length;
       $("nMap").textContent = users.filter((u) => u.located).length;
-      markers = new Map();
-      cluster.clearLayers();
+      const keep = new Set();
       const bounds = [];
       users.filter((u) => u.located).forEach((u) => {
-        const icon = L.divIcon({
-          className: "",
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
-          popupAnchor: [0, -10],
-          html: `<div class="pin" style="background:${u.online ? "#067647" : "#98a2b3"}"></div>`
-        });
-        const marker = L.marker([u.lat, u.lng], { icon, title: u.name });
-        marker.bindPopup(popup(u), { maxWidth: 360, minWidth: 260, autoPan: true });
-        marker.on("click", () => { selected = u.id; showUserDetail(u); renderList(); });
-        markers.set(u.id, marker);
-        cluster.addLayer(marker);
+        keep.add(u.id);
+        const html = popup(u);
+        let marker = markers.get(u.id);
+        if (!marker) {
+          marker = L.marker([u.lat, u.lng], { icon: pinIcon(u.online), title: u.name });
+          marker.bindPopup(html, { maxWidth: 360, minWidth: 260, autoPan: true });
+          marker.on("click", () => {
+            selected = u.id;
+            showUserDetail(users.find((x) => x.id === u.id) || u);
+            renderList();
+          });
+          markers.set(u.id, marker);
+          cluster.addLayer(marker);
+        } else {
+          marker.setLatLng([u.lat, u.lng]);
+          marker.setIcon(pinIcon(u.online));
+          marker.options.title = u.name;
+          refreshOpenPopup(marker, html);
+        }
         bounds.push([u.lat, u.lng]);
+      });
+      [...markers.keys()].forEach((id) => {
+        if (keep.has(id)) return;
+        cluster.removeLayer(markers.get(id));
+        markers.delete(id);
       });
       if (!fitted && bounds.length) {
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
@@ -523,8 +556,10 @@
     function showUserDetail(u) {
       const box = $("detail");
       if (!u) { box.classList.remove("show"); box.innerHTML = ""; return; }
+      const top = box.scrollTop;
       box.classList.add("show");
       box.innerHTML = popup(u);
+      box.scrollTop = top;
     }
 
     function renderList(shown) {
@@ -534,11 +569,13 @@
         box.innerHTML = '<div class="empty">Không có user khớp bộ lọc.</div>';
         return;
       }
+      const top = box.scrollTop;
       box.innerHTML = list.map((u) => `
         <button class="user ${u.id === selected ? "active" : ""}" data-id="${esc(u.id)}">
           <b><i class="dot ${u.online ? "on" : "off"}"></i>${esc(u.name)}</b>
           <span>${esc(u.network || "Chưa có mạng")} · ${u.located ? esc(ago(u.updated)) : "chưa có GPS"}</span>
         </button>`).join("");
+      box.scrollTop = top;
     }
 
     $("list").onclick = (e) => {
