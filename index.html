@@ -46,6 +46,17 @@
     }
     .counts { display: flex; gap: 8px; font-size: 12px; color: var(--muted); }
     .counts b { color: var(--ink); }
+    .measure-row { display: flex; gap: 8px; margin-top: 8px; }
+    .measure-row button {
+      flex: 1; border: 1px solid var(--line); background: #fff; border-radius: 8px;
+      padding: 8px; cursor: pointer; font-size: 13px;
+    }
+    .measure-row button.on { background: #c2410c; color: #fff; border-color: #c2410c; }
+    #measureReadout { margin-top: 6px; font-size: 12px; color: var(--muted); min-height: 16px; }
+    .seg-tip {
+      background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
+      font-weight: 700; box-shadow: none;
+    }
     #list { overflow: auto; flex: 1; }
     .user {
       width: 100%;
@@ -99,6 +110,11 @@
           <span>Online <b id="nOn">0</b></span>
           <span>Tổng <b id="nAll">0</b></span>
         </div>
+        <div class="measure-row">
+          <button id="btnMeasure" type="button">Đo khoảng cách</button>
+          <button id="btnClearMeasure" type="button">Xóa</button>
+        </div>
+        <div id="measureReadout">Bấm “Đo khoảng cách”, rồi chọn các điểm trên bản đồ.</div>
       </div>
       <div id="list"><div class="empty">Đang tải user…</div></div>
     </aside>
@@ -120,6 +136,7 @@
     });
 
     const ONLINE_MS = 30000;
+    const $ = (id) => document.getElementById(id);
     const map = L.map("map").setView([16.2, 107.8], 6);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
@@ -128,11 +145,66 @@
     const cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 42 });
     map.addLayer(cluster);
 
+    let measuring = false;
+    const measurePoints = [];
+    const measureLine = L.polyline([], { color: "#c2410c", weight: 3, interactive: false }).addTo(map);
+    const measureLayer = L.layerGroup().addTo(map);
+
+    function fmtDist(meters) {
+      if (meters < 1000) return Math.round(meters) + " m";
+      return (meters / 1000).toFixed(2) + " km";
+    }
+
+    function refreshMeasure() {
+      measureLine.setLatLngs(measurePoints);
+      measureLayer.clearLayers();
+      let total = 0;
+      measurePoints.forEach((point, i) => {
+        L.circleMarker(point, {
+          radius: 5, color: "#c2410c", fillColor: "#fff", fillOpacity: 1, weight: 2
+        }).addTo(measureLayer);
+        if (i === 0) return;
+        const segment = map.distance(measurePoints[i - 1], point);
+        total += segment;
+        const mid = L.latLng(
+          (measurePoints[i - 1].lat + point.lat) / 2,
+          (measurePoints[i - 1].lng + point.lng) / 2
+        );
+        L.tooltip({ permanent: true, direction: "center", className: "seg-tip", opacity: 1 })
+          .setLatLng(mid)
+          .setContent(fmtDist(segment))
+          .addTo(measureLayer);
+      });
+      $("measureReadout").textContent = measurePoints.length < 2
+        ? (measuring ? "Bấm điểm tiếp theo trên bản đồ." : "Bấm “Đo khoảng cách”, rồi chọn các điểm trên bản đồ.")
+        : "Tổng " + fmtDist(total) + " · " + measurePoints.length + " điểm";
+    }
+
+    $("btnMeasure").onclick = () => {
+      measuring = !measuring;
+      $("btnMeasure").classList.toggle("on", measuring);
+      $("btnMeasure").textContent = measuring ? "Đang đo" : "Đo khoảng cách";
+      map.getContainer().style.cursor = measuring ? "crosshair" : "";
+      if (measuring) map.doubleClickZoom.disable();
+      else map.doubleClickZoom.enable();
+      refreshMeasure();
+    };
+    $("btnClearMeasure").onclick = () => {
+      measurePoints.length = 0;
+      refreshMeasure();
+    };
+    map.on("click", (event) => {
+      if (!measuring) return;
+      const target = event.originalEvent && event.originalEvent.target;
+      if (target && target.closest && target.closest(".leaflet-marker-icon, .marker-cluster")) return;
+      measurePoints.push(event.latlng);
+      refreshMeasure();
+    });
+
     let users = [];
     let markers = new Map();
     let fitted = false;
     let selected = null;
-    const $ = (id) => document.getElementById(id);
 
     function esc(v) {
       return String(v ?? "").replace(/[&<>"']/g, (c) => ({
