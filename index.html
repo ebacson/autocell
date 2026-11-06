@@ -347,19 +347,58 @@
         `</div>`;
     }
 
+    // Serving kiểu radar: đậm ở gốc, mờ dần ra xa và hai mép; không viền.
     function addServingSector(lat, lng, azimuth, tilt, height, popupHtml) {
       const radius = sectorRadius(tilt, height);
-      const sector = L.polygon(sectorRing(lat, lng, azimuth, radius, 60), {
-        color: "#1565C0",
-        weight: 3,
+      const sweep = 60;
+      const half = sweep / 2;
+      const angStep = 3;
+      const radSteps = 8;
+      const group = L.layerGroup();
+
+      for (let a0 = -half; a0 < half - 0.001; a0 += angStep) {
+        const a1 = Math.min(a0 + angStep, half);
+        const amid = (a0 + a1) / 2;
+        const sideFade = Math.pow(Math.max(0, 1 - Math.abs(amid) / half), 1.7);
+        for (let i = 0; i < radSteps; i++) {
+          const r0 = (radius * i) / radSteps;
+          const r1 = (radius * (i + 1)) / radSteps;
+          const radialFade = Math.pow(1 - (i + 0.5) / radSteps, 1.45);
+          const opacity = 0.5 * sideFade * radialFade;
+          if (opacity < 0.015) continue;
+          const ring = r0 < 1
+            ? [
+                [lat, lng],
+                destination(lat, lng, r1, azimuth + a0),
+                destination(lat, lng, r1, azimuth + a1)
+              ]
+            : [
+                destination(lat, lng, r0, azimuth + a0),
+                destination(lat, lng, r0, azimuth + a1),
+                destination(lat, lng, r1, azimuth + a1),
+                destination(lat, lng, r1, azimuth + a0)
+              ];
+          L.polygon(ring, {
+            stroke: false,
+            fillColor: "#42A5F5",
+            fillOpacity: opacity,
+            interactive: false,
+            bubblingMouseEvents: false
+          }).addTo(group);
+        }
+      }
+
+      const hit = L.polygon(sectorRing(lat, lng, azimuth, radius, sweep), {
+        stroke: false,
         fillColor: "#42A5F5",
-        fillOpacity: 0.24,
+        fillOpacity: 0.01,
         interactive: !measureMode,
         bubblingMouseEvents: false
       });
-      sector.bindPopup(popupHtml);
-      sector.addTo(sectorLayer);
-      return sector;
+      hit.bindPopup(popupHtml);
+      hit.addTo(group);
+      group.addTo(sectorLayer);
+      return group;
     }
 
     function addAzimuthLine(lat, lng, azimuth, tech, popupHtml) {
