@@ -61,19 +61,27 @@
     }
     .tech-filters label.off { color: var(--muted); font-weight: 500; background: #f8fafc; }
     .tech-filters i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .measure-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-    .measure-row button {
-      flex: 1; border: 1px solid var(--line); background: #fff; border-radius: 8px;
-      padding: 8px; cursor: pointer; font-size: 13px;
+    .leaflet-control-tools {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 5px rgba(0,0,0,.35);
+      padding: 8px;
+      min-width: 168px;
     }
-    .measure-row button.on { background: #c2410c; color: #fff; border-color: #c2410c; }
-    #measureReadout { margin-top: 6px; font-size: 12px; color: var(--muted); min-height: 16px; }
-    #btnClearMap {
-      width: 100%; margin-top: 8px; border: 1px solid #fecdca; background: #fff5f5;
-      border-radius: 8px; padding: 8px; cursor: pointer; font-size: 13px;
-      color: #b42318; font-weight: 650;
+    .leaflet-control-tools .measure-row {
+      display: flex; flex-direction: column; gap: 6px;
     }
-    #btnClearMap:hover { background: #fee4e2; }
+    .leaflet-control-tools button {
+      border: 1px solid var(--line); background: #fff; border-radius: 6px;
+      padding: 7px 8px; cursor: pointer; font-size: 12px; text-align: left; width: 100%;
+    }
+    .leaflet-control-tools button.on { background: #c2410c; color: #fff; border-color: #c2410c; }
+    .leaflet-control-tools #btnClearMap {
+      border-color: #fecdca; background: #fff5f5; color: #b42318; font-weight: 650;
+    }
+    .leaflet-control-tools #measureReadout {
+      margin-top: 6px; font-size: 11px; color: var(--muted); max-width: 180px; line-height: 1.3;
+    }
     .seg-tip {
       background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
       font-weight: 700; box-shadow: none;
@@ -163,13 +171,6 @@
           <span>Tổng <b id="nAll">0</b></span>
           <span>Trạm <b id="nStations">…</b></span>
         </div>
-        <div class="measure-row">
-          <button id="btnMeasure" type="button">Đo khoảng cách</button>
-          <button id="btnAngle" type="button">Đo góc</button>
-          <button id="btnClearMeasure" type="button">Xóa</button>
-        </div>
-        <div id="measureReadout">Bấm “Đo khoảng cách”, rồi chọn các điểm trên bản đồ.</div>
-        <button id="btnClearMap" type="button">Clear map</button>
       </div>
       <div id="list"><div class="empty">Đang tải user…</div></div>
     </aside>
@@ -216,6 +217,26 @@
       null,
       { position: "topright", collapsed: false }
     ).addTo(map);
+
+    const MapTools = L.Control.extend({
+      options: { position: "bottomright" },
+      onAdd() {
+        const box = L.DomUtil.create("div", "leaflet-control leaflet-control-tools");
+        box.innerHTML = `
+          <div class="measure-row">
+            <button id="btnMeasure" type="button">Đo khoảng cách</button>
+            <button id="btnAngle" type="button">Đo góc</button>
+            <button id="btnClearMeasure" type="button">Xóa đo</button>
+            <button id="btnClearMap" type="button">Clear map</button>
+          </div>
+          <div id="measureReadout">Bấm “Đo khoảng cách” hoặc “Đo góc”.</div>`;
+        L.DomEvent.disableClickPropagation(box);
+        L.DomEvent.disableScrollPropagation(box);
+        return box;
+      }
+    });
+    map.addControl(new MapTools());
+
     const routeLayer = L.layerGroup().addTo(map);
     const routes = new Map(); // userId -> { points: [{lat,lng,dbm,t,html,marker}] }
     const cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 42 });
