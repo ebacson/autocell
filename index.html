@@ -46,7 +46,7 @@
     }
     .counts { display: flex; gap: 8px; font-size: 12px; color: var(--muted); }
     .counts b { color: var(--ink); }
-    .measure-row { display: flex; gap: 8px; margin-top: 8px; }
+    .measure-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
     .measure-row button {
       flex: 1; border: 1px solid var(--line); background: #fff; border-radius: 8px;
       padding: 8px; cursor: pointer; font-size: 13px;
@@ -131,6 +131,7 @@
         <label class="stations"><input id="chkStations" type="checkbox" checked> Hiện trạm (cánh sóng khi phóng to)</label>
         <div class="measure-row">
           <button id="btnMeasure" type="button">Đo khoảng cách</button>
+          <button id="btnAngle" type="button">Đo góc</button>
           <button id="btnClearMeasure" type="button">Xóa</button>
         </div>
         <div id="measureReadout">Bấm “Đo khoảng cách”, rồi chọn các điểm trên bản đồ.</div>
@@ -290,7 +291,7 @@
     get(ref(getDatabase(app), "celldata")).then((snap) => loadStations(snap.val() || {}))
       .catch((err) => { $("nStations").textContent = "lỗi"; console.warn(err); });
 
-    let measuring = false;
+    let measureMode = "";
     const measurePoints = [];
     const measureLine = L.polyline([], { color: "#c2410c", weight: 3, interactive: false }).addTo(map);
     const measureLayer = L.layerGroup().addTo(map);
@@ -300,46 +301,100 @@
       return (meters / 1000).toFixed(2) + " km";
     }
 
+    function bearingDeg(a, b) {
+      const φ1 = a.lat * Math.PI / 180;
+      const φ2 = b.lat * Math.PI / 180;
+      const Δλ = (b.lng - a.lng) * Math.PI / 180;
+      const y = Math.sin(Δλ) * Math.cos(φ2);
+      const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+
+    function includedAngle(a, vertex, c) {
+      let diff = Math.abs(bearingDeg(vertex, a) - bearingDeg(vertex, c));
+      if (diff > 180) diff = 360 - diff;
+      return diff;
+    }
+
+    function measureTip(latlng, text) {
+      L.tooltip({ permanent: true, direction: "center", className: "seg-tip", opacity: 1 })
+        .setLatLng(latlng)
+        .setContent(text)
+        .addTo(measureLayer);
+    }
+
     function refreshMeasure() {
+      const angle = measureMode === "angle";
+      measureLine.setStyle({ color: angle ? "#0f766e" : "#c2410c" });
       measureLine.setLatLngs(measurePoints);
       measureLayer.clearLayers();
       let total = 0;
+      const angles = [];
       measurePoints.forEach((point, i) => {
         L.circleMarker(point, {
-          radius: 5, color: "#c2410c", fillColor: "#fff", fillOpacity: 1, weight: 2
+          radius: i > 0 && i < measurePoints.length - 1 && angle ? 7 : 5,
+          color: angle ? "#0f766e" : "#c2410c",
+          fillColor: "#fff",
+          fillOpacity: 1,
+          weight: 2
         }).addTo(measureLayer);
         if (i === 0) return;
-        const segment = map.distance(measurePoints[i - 1], point);
+        const prev = measurePoints[i - 1];
+        const segment = map.distance(prev, point);
         total += segment;
-        const mid = L.latLng(
-          (measurePoints[i - 1].lat + point.lat) / 2,
-          (measurePoints[i - 1].lng + point.lng) / 2
-        );
-        L.tooltip({ permanent: true, direction: "center", className: "seg-tip", opacity: 1 })
-          .setLatLng(mid)
-          .setContent(fmtDist(segment))
-          .addTo(measureLayer);
+        const mid = L.latLng((prev.lat + point.lat) / 2, (prev.lng + point.lng) / 2);
+        const heading = bearingDeg(prev, point);
+        measureTip(mid, angle ? Math.round(heading) + "°" : fmtDist(segment));
+        if (angle && i >= 2) {
+          const deg = includedAngle(measurePoints[i - 2], prev, point);
+          angles.push(deg);
+          measureTip(prev, Math.round(deg) + "°");
+        }
       });
+      const idle = "Bấm “Đo khoảng cách” hoặc “Đo góc”, rồi chọn điểm trên bản đồ.";
+      if (!measureMode) {
+        $("measureReadout").textContent = measurePoints.length ? "" : idle;
+        if (!measurePoints.length) $("measureReadout").textContent = idle;
+        return;
+      }
+      if (angle) {
+        if (measurePoints.length < 2) {
+          $("measureReadout").textContent = "Bấm điểm đỉnh, rồi hai hướng của góc.";
+        } else if (!angles.length) {
+          $("measureReadout").textContent = "Hướng " + Math.round(bearingDeg(measurePoints[0], measurePoints[1])) + "°. Bấm điểm thứ ba.";
+        } else {
+          const last = angles[angles.length - 1];
+          $("measureReadout").textContent = "Góc " + last.toFixed(1) + "°"
+            + (angles.length > 1 ? " · " + angles.length + " góc" : "");
+        }
+        return;
+      }
       $("measureReadout").textContent = measurePoints.length < 2
-        ? (measuring ? "Bấm điểm tiếp theo trên bản đồ." : "Bấm “Đo khoảng cách”, rồi chọn các điểm trên bản đồ.")
+        ? "Bấm điểm tiếp theo trên bản đồ."
         : "Tổng " + fmtDist(total) + " · " + measurePoints.length + " điểm";
     }
 
-    $("btnMeasure").onclick = () => {
-      measuring = !measuring;
-      $("btnMeasure").classList.toggle("on", measuring);
-      $("btnMeasure").textContent = measuring ? "Đang đo" : "Đo khoảng cách";
-      map.getContainer().style.cursor = measuring ? "crosshair" : "";
-      if (measuring) map.doubleClickZoom.disable();
+    function setMeasureMode(mode) {
+      measureMode = measureMode === mode ? "" : mode;
+      measurePoints.length = 0;
+      $("btnMeasure").classList.toggle("on", measureMode === "distance");
+      $("btnAngle").classList.toggle("on", measureMode === "angle");
+      $("btnMeasure").textContent = measureMode === "distance" ? "Đang đo" : "Đo khoảng cách";
+      $("btnAngle").textContent = measureMode === "angle" ? "Đang đo góc" : "Đo góc";
+      map.getContainer().style.cursor = measureMode ? "crosshair" : "";
+      if (measureMode) map.doubleClickZoom.disable();
       else map.doubleClickZoom.enable();
       refreshMeasure();
-    };
+    }
+
+    $("btnMeasure").onclick = () => setMeasureMode("distance");
+    $("btnAngle").onclick = () => setMeasureMode("angle");
     $("btnClearMeasure").onclick = () => {
       measurePoints.length = 0;
       refreshMeasure();
     };
     map.on("click", (event) => {
-      if (!measuring) return;
+      if (!measureMode) return;
       const target = event.originalEvent && event.originalEvent.target;
       if (target && target.closest && target.closest(".leaflet-marker-icon, .marker-cluster")) return;
       measurePoints.push(event.latlng);
