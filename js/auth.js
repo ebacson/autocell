@@ -100,6 +100,18 @@ export function watchAuth(callback) {
   });
 }
 
+/** Bắt buộc đăng nhập; nếu chưa có session thì chuyển về trang login. */
+export function requireAuth(callback, loginPage = "auth.html") {
+  return watchAuth((user, role, caps) => {
+    if (!user) {
+      const page = (location.pathname.split("/").pop() || "index.html") + location.search + location.hash;
+      location.replace(loginPage + "?next=" + encodeURIComponent(page));
+      return;
+    }
+    callback(user, role, caps);
+  });
+}
+
 export function watchRoles(callback) {
   return onValue(ref(db, "webRoles"), (snap) => {
     const val = snap.val() || {};
@@ -135,8 +147,9 @@ export async function login(email, password) {
   return cred.user;
 }
 
-export async function logout() {
+export async function logout(redirectTo = "auth.html") {
   await signOut(auth);
+  if (redirectTo) location.replace(redirectTo);
 }
 
 export async function setWebRoleFlags(uid, patch, actorCaps) {

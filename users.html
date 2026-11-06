@@ -201,7 +201,7 @@
   <script type="module">
     import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
     import {
-      db, watchAuth, watchRoles, logout, setWebRoleFlags, isRootEmail, authErrorMessage
+      db, requireAuth, watchRoles, logout, setWebRoleFlags, isRootEmail, authErrorMessage
     } from "./js/auth.js";
 
     const ONLINE_MS = 30000;
@@ -415,7 +415,7 @@
     }
 
     $("btnLogout").onclick = async () => {
-      await logout();
+      await logout("auth.html?next=users.html");
     };
 
     $("webRolesBody").onclick = async (e) => {
@@ -472,7 +472,7 @@
       }
     };
 
-    watchAuth((user, role, nextCaps) => {
+    requireAuth((user, role, nextCaps) => {
       authUser = user;
       caps = nextCaps;
       syncAuthUi();

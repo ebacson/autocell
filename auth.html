@@ -188,7 +188,7 @@
           await login(email, password);
           setMsg("Đăng nhập thành công.", true);
         }
-        const next = new URLSearchParams(location.search).get("next") || "users.html";
+        const next = new URLSearchParams(location.search).get("next") || "index.html";
         setTimeout(() => { location.href = next; }, 500);
       } catch (err) {
         setMsg(authErrorMessage(err), false);
@@ -198,8 +198,9 @@
     };
 
     $("btnLogout").onclick = async () => {
-      await logout();
+      await logout(null);
       setMsg("Đã đăng xuất.", true);
+      $("btnLogout").hidden = true;
     };
 
     watchAuth((user, role, caps) => {
@@ -208,6 +209,8 @@
       if (user) {
         $("email").value = user.email || "";
         setMsg("Đang đăng nhập: " + user.email + " · " + caps.label, true);
+      } else {
+        setMsg("");
       }
     });
   </script>

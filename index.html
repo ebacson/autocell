@@ -183,7 +183,7 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script type="module">
     import { ref, onValue, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-    import { db, watchAuth, logout } from "./js/auth.js";
+    import { db, requireAuth, logout } from "./js/auth.js";
 
     const ONLINE_MS = 30000;
     const MIN_ROUTE_M = 5;
@@ -191,16 +191,8 @@
     const ROUTE_STORE_KEY = "autocellRoutePoints.v1";
     const $ = (id) => document.getElementById(id);
 
-    watchAuth((user) => {
-      const loggedIn = !!user;
-      $("navLogin").hidden = loggedIn;
-      $("authBox").hidden = !loggedIn;
-      if (loggedIn) {
-        $("authWho").textContent = user.displayName || user.email || "User";
-        $("authWho").title = user.email || "";
-      }
-    });
-    $("btnLogout").onclick = () => logout();
+    document.getElementById("wrap").hidden = true;
+    $("btnLogout").onclick = () => logout("auth.html?next=index.html");
     const map = L.map("map").setView([16.2, 107.8], 6);
     const streetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
@@ -219,6 +211,15 @@
       null,
       { position: "topright", collapsed: false }
     ).addTo(map);
+
+    requireAuth((user) => {
+      $("navLogin").hidden = true;
+      $("authBox").hidden = false;
+      $("authWho").textContent = user.displayName || user.email || "User";
+      $("authWho").title = user.email || "";
+      document.getElementById("wrap").hidden = false;
+      setTimeout(() => map.invalidateSize(), 0);
+    });
 
     const MapTools = L.Control.extend({
       options: { position: "bottomright" },
