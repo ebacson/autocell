@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoCell — Quản lý user</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #fff;
+      --ink: #1c2430;
+      --muted: #667085;
+      --line: #e6eaf0;
+      --primary: #0b6e4f;
+      --primary-soft: #e7f6ef;
+      --danger: #b42318;
+      --warn: #b54708;
+      --online: #067647;
+      --offline: #98a2b3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    header {
+      background: #0e3b2e;
+      color: #fff;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    header h1 { margin: 0; font-size: 20px; font-weight: 650; }
+    header p { margin: 4px 0 0; color: #c9e6da; font-size: 13px; }
+    .admin-box { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .admin-box input, .toolbar input, .toolbar select {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 14px;
+      background: #fff;
+    }
+    .admin-box input { min-width: 180px; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      background: #e8eef2;
+      color: var(--ink);
+    }
+    button.primary { background: var(--primary); color: #fff; }
+    button.danger { background: #fdeceb; color: var(--danger); }
+    button.ghost { background: transparent; color: #d7efe4; border: 1px solid #3d6b59; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    main { padding: 16px 20px 32px; max-width: 1280px; margin: 0 auto; }
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; }
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .stat b { display: block; font-size: 22px; }
+    .stat span { color: var(--muted); font-size: 12px; }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+    .toolbar input { flex: 1; min-width: 200px; }
+    .layout { display: grid; grid-template-columns: 1fr 340px; gap: 12px; align-items: start; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { background: #f8fafb; color: var(--muted); font-weight: 600; font-size: 12px; }
+    tr.row { cursor: pointer; }
+    tr.row:hover, tr.row.active { background: #f3faf6; }
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .on { background: #e7f6ef; color: var(--online); }
+    .off { background: #f2f4f7; color: #475467; }
+    .tag { background: #eef4ff; color: #1849a9; margin-right: 4px; }
+    .muted { color: var(--muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .detail { padding: 14px; position: sticky; top: 12px; }
+    .detail h2 { margin: 0 0 8px; font-size: 16px; }
+    .kv { display: grid; grid-template-columns: 92px 1fr; gap: 4px 8px; font-size: 13px; margin: 8px 0 12px; }
+    .kv span { color: var(--muted); }
+    .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .empty, .status { padding: 28px 16px; text-align: center; color: var(--muted); }
+    .banner {
+      display: none;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #fff7ed;
+      color: #9a3412;
+      font-size: 13px;
+    }
+    @media (max-width: 960px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .layout { grid-template-columns: 1fr; }
+      .detail { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>AutoCell — Quản lý user</h1>
+      <p>Danh sách thiết bị trên Firebase <span class="mono">users</span>. Online = cập nhật mạng trong 30 giây.</p>
+    </div>
+    <div class="admin-box">
+      <span id="adminState" class="pill off">Chỉ xem</span>
+      <input id="adminUser" placeholder="Username admin trên app" autocomplete="off">
+      <button class="primary" id="btnUnlock" type="button">Mở quyền sửa</button>
+      <button class="ghost" id="btnLock" type="button" hidden>Khóa</button>
+    </div>
+  </header>
+  <main>
+    <div class="banner" id="banner"></div>
+    <section class="stats">
+      <div class="stat"><b id="nTotal">—</b><span>Tổng thiết bị</span></div>
+      <div class="stat"><b id="nOnline">—</b><span>Online</span></div>
+      <div class="stat"><b id="nOffline">—</b><span>Offline</span></div>
+      <div class="stat"><b id="nAdmin">—</b><span>Admin</span></div>
+      <div class="stat"><b id="nSupport">—</b><span>Support</span></div>
+    </section>
+    <div class="toolbar">
+      <input id="q" placeholder="Tìm username, SĐT, email, thiết bị, mạng…">
+      <select id="filter">
+        <option value="all">Tất cả</option>
+        <option value="online">Online</option>
+        <option value="offline">Offline</option>
+        <option value="admin">Admin</option>
+        <option value="support">Support</option>
+      </select>
+      <span class="muted" id="shown"></span>
+    </div>
+    <div class="layout">
+      <div class="card">
+        <div class="status" id="loading">Đang tải danh sách…</div>
+        <table id="table" hidden>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Trạng thái</th>
+              <th>Mạng</th>
+              <th>Vị trí</th>
+              <th>Cập nhật</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <aside class="card detail" id="detail">
+        <h2>Chi tiết</h2>
+        <p class="muted">Chọn một dòng để xem thông tin thiết bị và mạng.</p>
+      </aside>
+    </div>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+    const app = initializeApp({
+      apiKey: "AIzaSyCh9CZyZEXkwqievZYXEc8dua28kj0zqbc",
+      authDomain: "autocell-ebacson.firebaseapp.com",
+      databaseURL: "https://autocell-ebacson-default-rtdb.firebaseio.com",
+      projectId: "autocell-ebacson",
+      storageBucket: "autocell-ebacson.firebasestorage.app"
+    });
+    const db = getDatabase(app);
+
+    const ONLINE_MS = 30000;
+    let users = [];
+    let selectedId = null;
+    let adminName = sessionStorage.getItem("autocellAdmin") || "";
+
+    const $ = (id) => document.getElementById(id);
+
+    function esc(v) {
+      return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    function truthy(v) { return v === true || v === "true"; }
+
+    function ts(ms) {
+      const n = Number(ms);
+      if (!n) return "—";
+      return new Date(n).toLocaleString("vi-VN", { hour12: false });
+    }
+
+    function ago(ms) {
+      const n = Number(ms);
+      if (!n) return "chưa có";
+      const s = Math.max(0, Math.round((Date.now() - n) / 1000));
+      if (s < 60) return s + " giây trước";
+      if (s < 3600) return Math.floor(s / 60) + " phút trước";
+      if (s < 86400) return Math.floor(s / 3600) + " giờ trước";
+      return Math.floor(s / 86400) + " ngày trước";
+    }
+
+    function num(v) {
+      if (v === undefined || v === null || v === "") return null;
+      const n = Number(v);
+      return Number.isFinite(n) && n !== 2147483647 ? n : null;
+    }
+
+    function mapUser(id, raw) {
+      const u = raw || {};
+      const net = u.networkinfo || {};
+      const sig = net.signalInfo || {};
+      const cell = net.cellInfo || {};
+      const loc = net.currentLocation || {};
+      const updated = Number(net.timestamp) || Number(u.lastLogin) || Number(u.timestamp) || 0;
+      const rsrp = num(sig.ssRsrp) ?? num(sig.rsrp) ?? num(sig.rscp) ?? num(sig.rxLevel);
+      return {
+        id,
+        username: u.username || "",
+        email: u.email || "",
+        phone: u.phone || "",
+        deviceName: u.deviceName || "",
+        platform: u.platform || "",
+        admin: truthy(u.admin),
+        support: truthy(u.support),
+        hasLogin: truthy(u.hasLogin),
+        lastLogin: Number(u.lastLogin) || 0,
+        updated,
+        online: updated > 0 && (Date.now() - updated) <= ONLINE_MS,
+        networkName: net.networkName || "",
+        networkType: net.networkType || "",
+        serviceState: net.serviceState || "",
+        dataState: net.dataState || "",
+        station: net.stationInfo || "",
+        appTitle: net.appTitle || "",
+        lat: num(loc.latitude),
+        lng: num(loc.longitude),
+        accuracy: num(loc.accuracy),
+        rsrp,
+        rsrq: num(sig.ssRsrq) ?? num(sig.rsrq),
+        sinr: num(sig.ssSinr) ?? num(sig.snr),
+        tech: sig.technology || cell.technology || "",
+        pci: cell.pci ?? cell.psc ?? "",
+        raw: u
+      };
+    }
+
+    function passes(u) {
+      const f = $("filter").value;
+      if (f === "online" && !u.online) return false;
+      if (f === "offline" && u.online) return false;
+      if (f === "admin" && !u.admin) return false;
+      if (f === "support" && !u.support) return false;
+      const q = $("q").value.trim().toLowerCase();
+      if (!q) return true;
+      const blob = [u.username, u.email, u.phone, u.deviceName, u.id, u.platform, u.networkName, u.networkType, u.appTitle]
+        .join(" ").toLowerCase();
+      return blob.includes(q);
+    }
+
+    function render() {
+      const list = users.filter(passes);
+      $("nTotal").textContent = users.length;
+      $("nOnline").textContent = users.filter((u) => u.online).length;
+      $("nOffline").textContent = users.filter((u) => !u.online).length;
+      $("nAdmin").textContent = users.filter((u) => u.admin).length;
+      $("nSupport").textContent = users.filter((u) => u.support).length;
+      $("shown").textContent = list.length + " / " + users.length;
+      $("loading").hidden = true;
+      $("table").hidden = false;
+      const body = $("tbody");
+      if (!list.length) {
+        body.innerHTML = '<tr><td colspan="5" class="empty">Không có user khớp bộ lọc.</td></tr>';
+      } else {
+        body.innerHTML = list.map((u) => `
+          <tr class="row ${u.id === selectedId ? "active" : ""}" data-id="${esc(u.id)}">
+            <td>
+              <b>${esc(u.username || u.deviceName || "Chưa đặt tên")}</b>
+              <div class="muted">${esc(u.phone || "—")} · ${esc(u.platform || "—")}</div>
+              <div class="mono muted">${esc(u.id)}</div>
+              ${u.admin ? '<span class="pill tag">Admin</span>' : ""}
+              ${u.support ? '<span class="pill tag">Support</span>' : ""}
+            </td>
+            <td><span class="pill ${u.online ? "on" : "off"}">${u.online ? "Online" : "Offline"}</span>
+              <div class="muted">${u.hasLogin ? "Đang đăng nhập" : "Chưa đăng nhập"}</div></td>
+            <td>${esc([u.networkName, u.networkType].filter(Boolean).join(" · ") || "—")}
+              <div class="muted">${u.rsrp == null ? "" : "RSRP " + u.rsrp + " dBm"}</div></td>
+            <td class="mono">${u.lat == null ? "—" : u.lat.toFixed(5) + ", " + u.lng.toFixed(5)}</td>
+            <td>${esc(ago(u.updated))}<div class="muted">${esc(ts(u.updated))}</div></td>
+          </tr>`).join("");
+      }
+      if (selectedId && !users.some((u) => u.id === selectedId)) selectedId = null;
+      renderDetail();
+    }
+
+    function renderDetail() {
+      const u = users.find((x) => x.id === selectedId);
+      const box = $("detail");
+      if (!u) {
+        box.innerHTML = "<h2>Chi tiết</h2><p class=\"muted\">Chọn một dòng để xem thông tin thiết bị và mạng.</p>";
+        return;
+      }
+      const loc = u.lat == null ? "—" : `${u.lat.toFixed(6)}, ${u.lng.toFixed(6)}`;
+      const map = u.lat == null ? "" : `<a href="https://www.google.com/maps?q=${u.lat},${u.lng}" target="_blank" rel="noopener">Mở bản đồ</a>`;
+      const locked = !adminName;
+      box.innerHTML = `
+        <h2>${esc(u.username || u.deviceName || "Thiết bị")}</h2>
+        <div class="kv">
+          <span>Device</span><b class="mono">${esc(u.id)}</b>
+          <span>Email</span><b>${esc(u.email || "—")}</b>
+          <span>SĐT</span><b>${esc(u.phone || "—")}</b>
+          <span>Nền tảng</span><b>${esc(u.platform || "—")}</b>
+          <span>Tên máy</span><b>${esc(u.deviceName || "—")}</b>
+          <span>Tiêu đề</span><b>${esc(u.appTitle || "—")}</b>
+          <span>Quyền</span><b>${u.admin ? "Admin" : "User"}${u.support ? " · Support" : ""}</b>
+          <span>Login</span><b>${u.hasLogin ? "Có" : "Không"} · ${esc(ts(u.lastLogin))}</b>
+          <span>Mạng</span><b>${esc([u.networkName, u.networkType, u.tech].filter(Boolean).join(" · ") || "—")}</b>
+          <span>Dịch vụ</span><b>${esc(u.serviceState || "—")} / ${esc(u.dataState || "—")}</b>
+          <span>Tín hiệu</span><b>${u.rsrp == null ? "—" : "RSRP " + u.rsrp}${u.rsrq == null ? "" : " · RSRQ " + u.rsrq}${u.sinr == null ? "" : " · SINR " + u.sinr}</b>
+          <span>PCI</span><b>${esc(u.pci === "" ? "—" : u.pci)}</b>
+          <span>Trạm</span><b>${esc(u.station || "—")}</b>
+          <span>Vị trí</span><b>${esc(loc)} ${u.accuracy == null ? "" : "±" + Math.round(u.accuracy) + "m"} ${map}</b>
+          <span>Cập nhật</span><b>${esc(ts(u.updated))}</b>
+        </div>
+        <div class="actions">
+          <button data-act="name" ${locked ? "disabled" : ""}>Sửa username</button>
+          <button data-act="support" ${locked ? "disabled" : ""}>${u.support ? "Hủy Support" : "Cấp Support"}</button>
+          <button data-act="admin" ${locked ? "disabled" : ""}>${u.admin ? "Gỡ Admin" : "Cấp Admin"}</button>
+          <button class="danger" data-act="delete" ${locked ? "disabled" : ""}>Xóa thiết bị</button>
+        </div>
+        <p class="muted">${locked ? "Nhập username có cờ admin trên app để sửa." : "Đang sửa với quyền " + esc(adminName) + "."}</p>`;
+    }
+
+    function setBanner(text) {
+      const b = $("banner");
+      b.style.display = text ? "block" : "none";
+      b.textContent = text || "";
+    }
+
+    function syncAdminUi() {
+      $("adminState").textContent = adminName ? "Admin: " + adminName : "Chỉ xem";
+      $("adminState").className = "pill " + (adminName ? "on" : "off");
+      $("btnLock").hidden = !adminName;
+      $("btnUnlock").hidden = !!adminName;
+      $("adminUser").hidden = !!adminName;
+    }
+
+    $("btnUnlock").onclick = () => {
+      const name = $("adminUser").value.trim().toLowerCase();
+      const hit = users.find((u) => u.admin && u.username.toLowerCase() === name);
+      if (!hit) {
+        setBanner("Không thấy username này với cờ admin=true. Quyền admin được cấp trên app (nhánh users).");
+        return;
+      }
+      adminName = hit.username;
+      sessionStorage.setItem("autocellAdmin", adminName);
+      setBanner("");
+      syncAdminUi();
+      renderDetail();
+    };
+
+    $("btnLock").onclick = () => {
+      adminName = "";
+      sessionStorage.removeItem("autocellAdmin");
+      syncAdminUi();
+      renderDetail();
+    };
+
+    $("q").oninput = render;
+    $("filter").onchange = render;
+    $("tbody").onclick = (e) => {
+      const tr = e.target.closest("tr[data-id]");
+      if (!tr) return;
+      selectedId = tr.dataset.id;
+      render();
+    };
+
+    $("detail").onclick = async (e) => {
+      const btn = e.target.closest("button[data-act]");
+      if (!btn || !adminName) return;
+      const u = users.find((x) => x.id === selectedId);
+      if (!u) return;
+      const userRef = ref(db, "users/" + u.id);
+      try {
+        if (btn.dataset.act === "name") {
+          const next = prompt("Username mới", u.username);
+          if (!next || !next.trim()) return;
+          await update(userRef, { username: next.trim() });
+        } else if (btn.dataset.act === "support") {
+          await update(userRef, { support: !u.support });
+        } else if (btn.dataset.act === "admin") {
+          if (u.username.toLowerCase() === adminName.toLowerCase() && u.admin) {
+            if (!confirm("Gỡ admin của chính tài khoản đang dùng để mở khóa trang?")) return;
+          }
+          await update(userRef, { admin: !u.admin });
+        } else if (btn.dataset.act === "delete") {
+          if (!confirm("Xóa vĩnh viễn thiết bị " + (u.username || u.id) + "?")) return;
+          await remove(userRef);
+          selectedId = null;
+        }
+        setBanner("");
+      } catch (err) {
+        setBanner("Firebase từ chối ghi: " + (err && err.message ? err.message : err));
+      }
+    };
+
+    onValue(ref(db, "users"), (snap) => {
+      const val = snap.val() || {};
+      users = Object.keys(val).map((id) => mapUser(id, val[id]));
+      users.sort((a, b) => {
+        if (a.online !== b.online) return a.online ? -1 : 1;
+        return b.updated - a.updated;
+      });
+      if (adminName && !users.some((u) => u.admin && u.username.toLowerCase() === adminName.toLowerCase())) {
+        adminName = "";
+        sessionStorage.removeItem("autocellAdmin");
+      }
+      syncAdminUi();
+      render();
+    }, (err) => {
+      $("loading").textContent = "Không đọc được users: " + err.message;
+    });
+
+    setInterval(() => {
+      if (!users.length) return;
+      let changed = false;
+      users.forEach((u) => {
+        const online = u.updated > 0 && (Date.now() - u.updated) <= ONLINE_MS;
+        if (online !== u.online) { u.online = online; changed = true; }
+      });
+      if (changed) render();
+    }, 5000);
+  </script>
+</body>
+</html>
