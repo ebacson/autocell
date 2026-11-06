@@ -46,6 +46,14 @@
     }
     .counts { display: flex; gap: 8px; font-size: 12px; color: var(--muted); }
     .counts b { color: var(--ink); }
+    .tech-filters { display: flex; gap: 6px; margin-bottom: 8px; }
+    .tech-filters label {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+      border: 1px solid var(--line); border-radius: 8px; padding: 6px 4px;
+      font-size: 13px; font-weight: 700; cursor: pointer; background: #fff;
+    }
+    .tech-filters label.off { color: var(--muted); font-weight: 500; background: #f8fafc; }
+    .tech-filters i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
     .measure-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
     .measure-row button {
       flex: 1; border: 1px solid var(--line); background: #fff; border-radius: 8px;
@@ -83,10 +91,13 @@
       width: 16px; height: 16px; border-radius: 50%;
       border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35);
     }
-    .user-pop { font-size: 12px; line-height: 1.35; }
-    .user-pop h3 { margin: 0 0 2px; font-size: 14px; }
-    .user-pop .sec { margin: 8px 0 2px; font-size: 11px; font-weight: 700; color: #667085; }
-    .user-pop .row { display: flex; justify-content: space-between; gap: 10px; }
+    .leaflet-popup-content { margin: 6px 8px; }
+    .user-pop { font-size: 11px; line-height: 1.25; }
+    .user-pop h3 { margin: 0 0 1px; font-size: 12px; }
+    .user-pop .sec { margin: 4px 0 1px; font-size: 10px; font-weight: 700; color: #667085; }
+    .user-pop .row { display: flex; justify-content: space-between; gap: 8px; }
+    .site-pop, .cell-pop { font-size: 12px; line-height: 1.3; }
+    .site-pop b, .cell-pop b { font-size: 13px; }
     .user-pop .row span { color: #667085; }
     .user-pop .station { white-space: pre-wrap; margin-top: 2px; }
     .empty { padding: 16px; color: var(--muted); font-size: 13px; }
@@ -109,6 +120,11 @@
   <div id="wrap">
     <aside>
       <div class="tools">
+        <div class="tech-filters">
+          <label data-tech="3G"><input type="checkbox" data-tech="3G" checked> <i style="background:#d97706"></i>3G</label>
+          <label data-tech="4G"><input type="checkbox" data-tech="4G" checked> <i style="background:#2563eb"></i>4G</label>
+          <label data-tech="5G"><input type="checkbox" data-tech="5G" checked> <i style="background:#7c3aed"></i>5G</label>
+        </div>
         <input id="q" placeholder="Tìm user, mạng, thiết bị…">
         <select id="filter">
           <option value="located">Có vị trí</option>
@@ -173,6 +189,30 @@
       html: `<div class="station-dot"></div>`
     });
     let stations = [];
+    const techOn = { "3G": true, "4G": true, "5G": true };
+    let measureMode = "";
+
+    function techVisible(tech) {
+      return techOn[tech] !== false;
+    }
+
+    function parseCellLabel(name) {
+      const raw = String(name || "");
+      const cellMatch = raw.match(/[A-Za-z]{3}\d{3}[A-Za-z]\d{2}/);
+      const cellCode = cellMatch ? cellMatch[0].toUpperCase() : raw;
+      const cshtMatch = raw.match(/_([A-Za-z]{2,4})_(\d{5})(?=_|$)/);
+      const csht = cshtMatch ? cshtMatch[2] : "";
+      let station = "";
+      if (cshtMatch) station = raw.slice(cshtMatch.index + cshtMatch[0].length);
+      station = station.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+      const hadCell = cellCode && station.toUpperCase().includes(cellCode);
+      station = station.replace(/^(2G|3G|4G|5G|NB)\s+/i, "");
+      if (cellCode) station = station.replace(new RegExp("\\b" + cellCode + "\\b", "i"), " ");
+      station = station.replace(/\b[A-Za-z]{3}\d{3}[A-Za-z]\d{2}\b/g, " ").replace(/\s+/g, " ").trim();
+      if (hadCell) station = station.replace(/(?:^|\s+)[A-Za-z]{2,4}$/, "").trim();
+      if (!station || (!/\s/.test(station) && !/[A-Za-z]{4,}/.test(station))) station = "";
+      return { cellCode, csht, station };
+    }
 
     function techColor(tech) {
       if (tech === "5G") return "#7c3aed";
@@ -210,13 +250,17 @@
       stations.forEach((site) => {
         if (!bounds.contains([site.lat, site.lng])) return;
         site.cells.forEach((cell) => {
-          L.polygon(sectorRing(site.lat, site.lng, cell.azimuth, 140, 60), {
+          if (!techVisible(cell.tech)) return;
+          const sector = L.polygon(sectorRing(site.lat, site.lng, cell.azimuth, 140, 60), {
             color: techColor(cell.tech),
             weight: 1,
             fillColor: techColor(cell.tech),
             fillOpacity: 0.28,
-            interactive: false
-          }).addTo(sectorLayer);
+            interactive: !measureMode,
+            bubblingMouseEvents: false
+          });
+          sector.bindPopup(`<div class="cell-pop"><b>${esc(cell.name)}</b><br>${esc(cell.tech)}</div>`);
+          sector.addTo(sectorLayer);
         });
       });
     }
@@ -236,39 +280,56 @@
           groups.set(key, site);
         }
         if (cell.node) site.node = String(cell.node);
+        const label = parseCellLabel(cell.cellname || id);
         site.cells.push({
-          name: cell.cellname || id,
+          name: label.cellCode,
           tech: cell.tech || "",
-          azimuth: Number.isFinite(Number(cell.azimuth)) ? Number(cell.azimuth) : 0
+          azimuth: Number.isFinite(Number(cell.azimuth)) ? Number(cell.azimuth) : 0,
+          csht: label.csht,
+          station: label.station
         });
       });
       stations = [...groups.values()];
+      stations.forEach((site) => {
+        const names = site.cells.map((c) => c.station).filter(Boolean);
+        site.stationName = names.sort((a, b) => b.length - a.length)[0]
+          || (site.cells.find((c) => c.name.length >= 6) || {}).name?.slice(0, 6)
+          || site.node
+          || "Trạm";
+        site.csht = [...new Set(site.cells.map((c) => c.csht).filter(Boolean))].join(", ");
+      });
       $("nStations").textContent = stations.length;
+      paintStations();
+    }
+
+    function paintStations() {
       stationCluster.clearLayers();
       stations.forEach((site) => {
-        const techs = [...new Set(site.cells.map((c) => c.tech).filter(Boolean))].join("/");
+        if (!site.cells.some((c) => techVisible(c.tech))) return;
         const marker = L.marker([site.lat, site.lng], {
           icon: stationIcon,
-          title: site.node || site.cells[0].name,
+          title: site.stationName,
           zIndexOffset: -200
         });
-        const lines = site.cells.slice(0, 8).map((c) =>
-          `${esc(c.tech)} ${esc(c.name)} · ${c.azimuth}°`).join("<br>");
-        const more = site.cells.length > 8 ? `<br>… ${site.cells.length - 8} cell nữa` : "";
         marker.bindPopup(
-          `<b>${esc(site.node || "Trạm")}</b><br>${esc(techs)} · ${site.cells.length} cell<br>` +
-          `${site.lat.toFixed(5)}, ${site.lng.toFixed(5)}<br>${lines}${more}`
+          `<div class="site-pop"><b>${esc(site.stationName)}</b><br>CSHT ${esc(site.csht || "—")}</div>`
         );
         stationCluster.addLayer(marker);
       });
       redrawSectors();
     }
 
+    document.querySelectorAll(".tech-filters input").forEach((input) => {
+      input.onchange = () => {
+        techOn[input.dataset.tech] = input.checked;
+        input.parentElement.classList.toggle("off", !input.checked);
+        paintStations();
+      };
+    });
     map.on("moveend zoomend", redrawSectors);
     get(ref(getDatabase(app), "celldata")).then((snap) => loadStations(snap.val() || {}))
       .catch((err) => { $("nStations").textContent = "lỗi"; console.warn(err); });
 
-    let measureMode = "";
     const measurePoints = [];
     const measureLine = L.polyline([], { color: "#c2410c", weight: 3, interactive: false }).addTo(map);
     const measureLayer = L.layerGroup().addTo(map);
@@ -362,6 +423,7 @@
       if (measureMode) map.doubleClickZoom.disable();
       else map.doubleClickZoom.enable();
       refreshMeasure();
+      redrawSectors();
     }
 
     $("btnMeasure").onclick = () => setMeasureMode("distance");
