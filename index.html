@@ -57,7 +57,6 @@
       background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
       font-weight: 700; box-shadow: none;
     }
-    .tools label.stations { display: flex; gap: 6px; align-items: center; margin-top: 8px; font-size: 13px; }
     .station-dot { width: 9px; height: 9px; background: #1d4ed8; border: 1.5px solid #fff; transform: rotate(45deg); }
     .station-cluster {
       width: 28px; height: 28px; line-height: 26px; text-align: center; border-radius: 50%;
@@ -128,7 +127,6 @@
           <span>Tổng <b id="nAll">0</b></span>
           <span>Trạm <b id="nStations">…</b></span>
         </div>
-        <label class="stations"><input id="chkStations" type="checkbox" checked> Hiện trạm (cánh sóng khi phóng to)</label>
         <div class="measure-row">
           <button id="btnMeasure" type="button">Đo khoảng cách</button>
           <button id="btnAngle" type="button">Đo góc</button>
@@ -174,13 +172,13 @@
         html: `<div class="station-cluster">${c.getChildCount()}</div>`
       })
     });
-    const sectorLayer = L.layerGroup();
+    const sectorLayer = L.layerGroup().addTo(map);
+    map.addLayer(stationCluster);
     const stationIcon = L.divIcon({
       className: "", iconSize: [12, 12], iconAnchor: [6, 6],
       html: `<div class="station-dot"></div>`
     });
     let stations = [];
-    let showStations = true;
 
     function techColor(tech) {
       if (tech === "5G") return "#7c3aed";
@@ -213,7 +211,7 @@
 
     function redrawSectors() {
       sectorLayer.clearLayers();
-      if (!showStations || map.getZoom() < 13) return;
+      if (map.getZoom() < 13) return;
       const bounds = map.getBounds().pad(0.2);
       stations.forEach((site) => {
         if (!bounds.contains([site.lat, site.lng])) return;
@@ -269,24 +267,9 @@
         );
         stationCluster.addLayer(marker);
       });
-      if (showStations) {
-        if (!map.hasLayer(stationCluster)) map.addLayer(stationCluster);
-        if (!map.hasLayer(sectorLayer)) map.addLayer(sectorLayer);
-      }
       redrawSectors();
     }
 
-    $("chkStations").onchange = () => {
-      showStations = $("chkStations").checked;
-      if (showStations) {
-        map.addLayer(stationCluster);
-        map.addLayer(sectorLayer);
-      } else {
-        map.removeLayer(stationCluster);
-        map.removeLayer(sectorLayer);
-      }
-      redrawSectors();
-    };
     map.on("moveend zoomend", redrawSectors);
     get(ref(getDatabase(app), "celldata")).then((snap) => loadStations(snap.val() || {}))
       .catch((err) => { $("nStations").textContent = "lỗi"; console.warn(err); });
