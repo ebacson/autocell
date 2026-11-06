@@ -125,9 +125,9 @@
     <aside>
       <div class="tools">
         <div class="tech-filters">
-          <label data-tech="3G"><input type="checkbox" data-tech="3G" checked> <i style="background:#d97706"></i>3G</label>
-          <label data-tech="4G"><input type="checkbox" data-tech="4G" checked> <i style="background:#2563eb"></i>4G</label>
-          <label data-tech="5G"><input type="checkbox" data-tech="5G" checked> <i style="background:#7c3aed"></i>5G</label>
+          <label data-tech="3G"><input type="checkbox" data-tech="3G" checked> <i style="background:#4CAF50"></i>3G</label>
+          <label data-tech="4G"><input type="checkbox" data-tech="4G" checked> <i style="background:#2196F3"></i>4G</label>
+          <label data-tech="5G"><input type="checkbox" data-tech="5G" checked> <i style="background:#9C27B0"></i>5G</label>
         </div>
         <input id="q" placeholder="Tìm user, mạng, thiết bị…">
         <select id="filter">
@@ -220,10 +220,21 @@
     }
 
     function techColor(tech) {
-      if (tech === "5G") return "#7c3aed";
-      if (tech === "4G") return "#2563eb";
-      if (tech === "3G") return "#d97706";
-      return "#475467";
+      if (tech === "5G") return "#9C27B0";
+      if (tech === "4G") return "#2196F3";
+      if (tech === "3G") return "#4CAF50";
+      return "#808080";
+    }
+
+    // Giống MapFragment Android: 5G dài nhất, rồi 4G, 3G (base 100 m × 0.8^(priority-1)).
+    function azimuthLineLength(tech) {
+      const t = String(tech || "").toUpperCase();
+      let priority = 5;
+      if (t.includes("5G") || t === "NR") priority = 1;
+      else if (t.includes("4G") || t.includes("LTE")) priority = 2;
+      else if (t.includes("3G") || t.includes("WCDMA")) priority = 3;
+      else if (t.includes("2G") || t.includes("GSM")) priority = 4;
+      return 100 * Math.pow(0.8, priority - 1);
     }
 
     function destination(lat, lng, meters, bearingDeg) {
@@ -318,16 +329,33 @@
         `</div>`;
     }
 
-    function addSectorPolygon(lat, lng, azimuth, tilt, height, style, popupHtml) {
+    function addServingSector(lat, lng, azimuth, tilt, height, popupHtml) {
       const radius = sectorRadius(tilt, height);
       const sector = L.polygon(sectorRing(lat, lng, azimuth, radius, 60), {
-        ...style,
+        color: "#1565C0",
+        weight: 3,
+        fillColor: "#42A5F5",
+        fillOpacity: 0.24,
         interactive: !measureMode,
         bubblingMouseEvents: false
       });
       sector.bindPopup(popupHtml);
       sector.addTo(sectorLayer);
       return sector;
+    }
+
+    function addAzimuthLine(lat, lng, azimuth, tech, popupHtml) {
+      const end = destination(lat, lng, azimuthLineLength(tech), azimuth);
+      const line = L.polyline([[lat, lng], end], {
+        color: techColor(tech),
+        weight: 4,
+        opacity: 0.85,
+        interactive: !measureMode,
+        bubblingMouseEvents: false
+      });
+      line.bindPopup(popupHtml);
+      line.addTo(sectorLayer);
+      return line;
     }
 
     function redrawSectors() {
@@ -343,25 +371,28 @@
         site.cells.forEach((cell) => {
           if (!techVisible(cell.tech)) return;
           const serving = servingMatch(servings, cell.azimuth);
-          if (serving) matchedServing.add(serving);
-          const style = serving
-            ? { color: "#1565C0", weight: 3, fillColor: "#42A5F5", fillOpacity: 0.24 }
-            : { color: techColor(cell.tech), weight: 1, fillColor: techColor(cell.tech), fillOpacity: 0.22 };
-          addSectorPolygon(
-            site.lat, site.lng, cell.azimuth, cell.tilt, cell.height,
-            style, cellPopupHtml(cell, serving)
-          );
+          if (serving) {
+            matchedServing.add(serving);
+            addServingSector(
+              site.lat, site.lng,
+              serving.azimuth || cell.azimuth,
+              serving.tilt != null ? serving.tilt : cell.tilt,
+              serving.height != null ? serving.height : cell.height,
+              cellPopupHtml(cell, serving)
+            );
+          } else {
+            addAzimuthLine(site.lat, site.lng, cell.azimuth, cell.tech, cellPopupHtml(cell, null));
+          }
         });
       });
 
-      // Serving chưa khớp celldata: vẫn vẽ cánh sóng xanh Android.
+      // Serving chưa khớp celldata: vẫn vẽ cánh sóng theo tilt/height.
       servingBySite.forEach((list) => {
         list.forEach((s) => {
           if (matchedServing.has(s)) return;
           if (!bounds.contains([s.lat, s.lng])) return;
-          addSectorPolygon(
+          addServingSector(
             s.lat, s.lng, s.azimuth, s.tilt, s.height,
-            { color: "#1565C0", weight: 3, fillColor: "#42A5F5", fillOpacity: 0.24 },
             `<div class="cell-pop"><div style="color:#1565c0;font-weight:700">Serving · ${esc(s.user)}</div>` +
             `<div>Azimuth ${s.azimuth}°</div>` +
             `<div>Tilt ${s.tilt != null ? s.tilt : "—"}</div>` +
