@@ -57,6 +57,12 @@
       background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
       font-weight: 700; box-shadow: none;
     }
+    .tools label.stations { display: flex; gap: 6px; align-items: center; margin-top: 8px; font-size: 13px; }
+    .station-dot { width: 9px; height: 9px; background: #1d4ed8; border: 1.5px solid #fff; transform: rotate(45deg); }
+    .station-cluster {
+      width: 28px; height: 28px; line-height: 26px; text-align: center; border-radius: 50%;
+      background: #1d4ed8; color: #fff; border: 2px solid #fff; font-size: 11px; font-weight: 700;
+    }
     #list { overflow: auto; flex: 1; }
     .user {
       width: 100%;
@@ -109,7 +115,9 @@
           <span>Trên bản đồ <b id="nMap">0</b></span>
           <span>Online <b id="nOn">0</b></span>
           <span>Tổng <b id="nAll">0</b></span>
+          <span>Trạm <b id="nStations">…</b></span>
         </div>
+        <label class="stations"><input id="chkStations" type="checkbox" checked> Hiện trạm (cánh sóng khi phóng to)</label>
         <div class="measure-row">
           <button id="btnMeasure" type="button">Đo khoảng cách</button>
           <button id="btnClearMeasure" type="button">Xóa</button>
@@ -125,7 +133,7 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
     const app = initializeApp({
       apiKey: "AIzaSyCh9CZyZEXkwqievZYXEc8dua28kj0zqbc",
@@ -144,6 +152,131 @@
     }).addTo(map);
     const cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 42 });
     map.addLayer(cluster);
+    const stationCluster = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      maxClusterRadius: 48,
+      iconCreateFunction: (c) => L.divIcon({
+        className: "",
+        iconSize: [28, 28],
+        html: `<div class="station-cluster">${c.getChildCount()}</div>`
+      })
+    });
+    const sectorLayer = L.layerGroup();
+    const stationIcon = L.divIcon({
+      className: "", iconSize: [12, 12], iconAnchor: [6, 6],
+      html: `<div class="station-dot"></div>`
+    });
+    let stations = [];
+    let showStations = true;
+
+    function techColor(tech) {
+      if (tech === "5G") return "#7c3aed";
+      if (tech === "4G") return "#2563eb";
+      if (tech === "3G") return "#d97706";
+      return "#475467";
+    }
+
+    function destination(lat, lng, meters, bearingDeg) {
+      const R = 6378137;
+      const δ = meters / R;
+      const θ = bearingDeg * Math.PI / 180;
+      const φ1 = lat * Math.PI / 180;
+      const λ1 = lng * Math.PI / 180;
+      const φ2 = Math.asin(Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(θ));
+      const λ2 = λ1 + Math.atan2(
+        Math.sin(θ) * Math.sin(δ) * Math.cos(φ1),
+        Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2)
+      );
+      return [φ2 * 180 / Math.PI, λ2 * 180 / Math.PI];
+    }
+
+    function sectorRing(lat, lng, azimuth, radius, sweep) {
+      const start = azimuth - sweep / 2;
+      const pts = [[lat, lng]];
+      for (let i = 0; i <= 8; i++) pts.push(destination(lat, lng, radius, start + (sweep * i) / 8));
+      pts.push([lat, lng]);
+      return pts;
+    }
+
+    function redrawSectors() {
+      sectorLayer.clearLayers();
+      if (!showStations || map.getZoom() < 13) return;
+      const bounds = map.getBounds().pad(0.2);
+      stations.forEach((site) => {
+        if (!bounds.contains([site.lat, site.lng])) return;
+        site.cells.forEach((cell) => {
+          L.polygon(sectorRing(site.lat, site.lng, cell.azimuth, 140, 60), {
+            color: techColor(cell.tech),
+            weight: 1,
+            fillColor: techColor(cell.tech),
+            fillOpacity: 0.28,
+            interactive: false
+          }).addTo(sectorLayer);
+        });
+      });
+    }
+
+    function loadStations(raw) {
+      const groups = new Map();
+      Object.entries(raw || {}).forEach(([id, cell]) => {
+        if (!cell || typeof cell !== "object") return;
+        const lat = Number(cell.lat);
+        const lng = Number(cell.long);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+        if (lat === 0 && lng === 0) return;
+        const key = lat.toFixed(5) + "," + lng.toFixed(5);
+        let site = groups.get(key);
+        if (!site) {
+          site = { lat, lng, node: cell.node || "", cells: [] };
+          groups.set(key, site);
+        }
+        if (cell.node) site.node = String(cell.node);
+        site.cells.push({
+          name: cell.cellname || id,
+          tech: cell.tech || "",
+          azimuth: Number.isFinite(Number(cell.azimuth)) ? Number(cell.azimuth) : 0
+        });
+      });
+      stations = [...groups.values()];
+      $("nStations").textContent = stations.length;
+      stationCluster.clearLayers();
+      stations.forEach((site) => {
+        const techs = [...new Set(site.cells.map((c) => c.tech).filter(Boolean))].join("/");
+        const marker = L.marker([site.lat, site.lng], {
+          icon: stationIcon,
+          title: site.node || site.cells[0].name,
+          zIndexOffset: -200
+        });
+        const lines = site.cells.slice(0, 8).map((c) =>
+          `${esc(c.tech)} ${esc(c.name)} · ${c.azimuth}°`).join("<br>");
+        const more = site.cells.length > 8 ? `<br>… ${site.cells.length - 8} cell nữa` : "";
+        marker.bindPopup(
+          `<b>${esc(site.node || "Trạm")}</b><br>${esc(techs)} · ${site.cells.length} cell<br>` +
+          `${site.lat.toFixed(5)}, ${site.lng.toFixed(5)}<br>${lines}${more}`
+        );
+        stationCluster.addLayer(marker);
+      });
+      if (showStations) {
+        if (!map.hasLayer(stationCluster)) map.addLayer(stationCluster);
+        if (!map.hasLayer(sectorLayer)) map.addLayer(sectorLayer);
+      }
+      redrawSectors();
+    }
+
+    $("chkStations").onchange = () => {
+      showStations = $("chkStations").checked;
+      if (showStations) {
+        map.addLayer(stationCluster);
+        map.addLayer(sectorLayer);
+      } else {
+        map.removeLayer(stationCluster);
+        map.removeLayer(sectorLayer);
+      }
+      redrawSectors();
+    };
+    map.on("moveend zoomend", redrawSectors);
+    get(ref(getDatabase(app), "celldata")).then((snap) => loadStations(snap.val() || {}))
+      .catch((err) => { $("nStations").textContent = "lỗi"; console.warn(err); });
 
     let measuring = false;
     const measurePoints = [];
