@@ -259,7 +259,15 @@
             interactive: !measureMode,
             bubblingMouseEvents: false
           });
-          sector.bindPopup(`<div class="cell-pop"><b>${esc(cell.name)}</b><br>${esc(cell.tech)}</div>`);
+          sector.bindPopup(
+            `<div class="cell-pop">` +
+            `<div>${esc(cell.tech || "—")}</div>` +
+            `<b>${esc(cell.name)}</b>` +
+            `<div>Azimuth ${Number.isFinite(cell.azimuth) ? cell.azimuth + "°" : "—"}</div>` +
+            `<div>Tilt ${cell.tilt != null ? cell.tilt : "—"}</div>` +
+            `<div>H ${cell.height != null ? cell.height + " m" : "—"}</div>` +
+            `</div>`
+          );
           sector.addTo(sectorLayer);
         });
       });
@@ -281,10 +289,14 @@
         }
         if (cell.node) site.node = String(cell.node);
         const label = parseCellLabel(cell.cellname || id);
+        const tilt = Number(cell.tilt);
+        const height = Number(cell.height);
         site.cells.push({
           name: label.cellCode,
           tech: cell.tech || "",
           azimuth: Number.isFinite(Number(cell.azimuth)) ? Number(cell.azimuth) : 0,
+          tilt: Number.isFinite(tilt) ? tilt : null,
+          height: Number.isFinite(height) ? height : null,
           csht: label.csht,
           station: label.station
         });
