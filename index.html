@@ -497,7 +497,7 @@
       };
     });
     map.on("moveend zoomend", redrawSectors);
-    get(ref(getDatabase(app), "celldata")).then((snap) => loadStations(snap.val() || {}))
+    get(ref(db, "celldata")).then((snap) => loadStations(snap.val() || {}))
       .catch((err) => { $("nStations").textContent = "lỗi"; console.warn(err); });
 
     const measurePoints = [];
@@ -858,7 +858,7 @@
     $("q").oninput = draw;
     $("filter").onchange = draw;
 
-    onValue(ref(getDatabase(app), "users"), (snap) => {
+    onValue(ref(db, "users"), (snap) => {
       const val = snap.val() || {};
       users = Object.keys(val).map((id) => mapUser(id, val[id]));
       users.sort((a, b) => (b.online - a.online) || (b.updated - a.updated) || a.name.localeCompare(b.name));
