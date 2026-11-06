@@ -68,6 +68,10 @@
     }
     .measure-row button.on { background: #c2410c; color: #fff; border-color: #c2410c; }
     #measureReadout { margin-top: 6px; font-size: 12px; color: var(--muted); min-height: 16px; }
+    #btnClearRoute {
+      width: 100%; margin-top: 8px; border: 1px solid var(--line); background: #fff;
+      border-radius: 8px; padding: 7px; cursor: pointer; font-size: 12px; color: var(--muted);
+    }
     .seg-tip {
       background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
       font-weight: 700; box-shadow: none;
@@ -163,6 +167,7 @@
           <button id="btnClearMeasure" type="button">Xóa</button>
         </div>
         <div id="measureReadout">Bấm “Đo khoảng cách”, rồi chọn các điểm trên bản đồ.</div>
+        <button id="btnClearRoute" type="button">Xóa lộ trình đo</button>
       </div>
       <div id="list"><div class="empty">Đang tải user…</div></div>
     </aside>
@@ -176,6 +181,9 @@
     import { db, watchAuth, logout } from "./js/auth.js";
 
     const ONLINE_MS = 30000;
+    const MIN_ROUTE_M = 5;
+    const MAX_ROUTE_POINTS = 2000;
+    const ROUTE_STORE_KEY = "autocellRoutePoints.v1";
     const $ = (id) => document.getElementById(id);
 
     watchAuth((user) => {
@@ -193,6 +201,8 @@
       maxZoom: 19,
       attribution: "&copy; OpenStreetMap"
     }).addTo(map);
+    const routeLayer = L.layerGroup().addTo(map);
+    const routes = new Map(); // userId -> { points: [{lat,lng,dbm,t,html,marker}] }
     const cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 42 });
     map.addLayer(cluster);
     const stationCluster = L.markerClusterGroup({
@@ -804,6 +814,160 @@
       });
     }
 
+    function signalForColor(u) {
+      const sig = u.sig || {};
+      return field(sig, "ssRsrp") ?? field(sig, "rsrp") ?? field(sig, "rscp") ?? field(sig, "rxLevel");
+    }
+
+    // Giống SignalColorUtils Android: Excellent/Good/Fair/Poor/Very Poor.
+    function signalColor(dbm) {
+      if (dbm == null) return "#808080";
+      if (dbm >= -70) return "#0064ff";
+      if (dbm >= -90) return "#00c853";
+      if (dbm >= -100) return "#ffeb3b";
+      if (dbm >= -110) return "#ffa500";
+      return "#f44336";
+    }
+
+    function routePopupHtml(point) {
+      return `<div class="user-pop">
+        <h3>${esc(point.name || "Điểm đo")}</h3>
+        <div class="sec">Điểm đo</div>
+        ${popRow("Time", point.when)}
+        ${popRow("Lat / Long", point.lat.toFixed(6) + ", " + point.lng.toFixed(6))}
+        ${popRow("Network", point.network)}
+        ${popRow("Signal", point.dbm, " dBm")}
+        ${popRow("SS-RSRP", point.ssRsrp, " dBm")}
+        ${popRow("RSRP", point.rsrp, " dBm")}
+        ${popRow("RSRQ", point.rsrq, " dB")}
+        ${popRow("SINR", point.sinr, " dB")}
+        ${popRow("RSCP", point.rscp, " dBm")}
+        ${popRow("Cell", point.cellName)}
+      </div>`;
+    }
+
+    function snapshotRoutePoint(u, dbm) {
+      const sig = u.sig || {};
+      const cell = u.cell || {};
+      const when = u.updated
+        ? new Date(u.updated).toLocaleString("vi-VN", { hour12: false })
+        : "—";
+      return {
+        lat: u.lat,
+        lng: u.lng,
+        dbm,
+        t: u.updated || Date.now(),
+        when,
+        name: u.name,
+        network: u.network,
+        ssRsrp: field(sig, "ssRsrp"),
+        rsrp: field(sig, "rsrp"),
+        rsrq: field(sig, "ssRsrq") ?? field(sig, "rsrq"),
+        sinr: field(sig, "ssSinr") ?? field(sig, "snr"),
+        rscp: field(sig, "rscp"),
+        cellName: field(cell, "technologyDetail") || field(cell, "technology") || ""
+      };
+    }
+
+    function addRouteMarker(track, point) {
+      const marker = L.circleMarker([point.lat, point.lng], {
+        radius: 5,
+        color: "#ffffff",
+        weight: 1,
+        fillColor: signalColor(point.dbm),
+        fillOpacity: 0.95,
+        interactive: true
+      });
+      marker.bindPopup(routePopupHtml(point), { maxWidth: 300, minWidth: 200 });
+      marker.addTo(track.layer);
+      point.marker = marker;
+      track.points.push(point);
+      while (track.points.length > MAX_ROUTE_POINTS) {
+        const old = track.points.shift();
+        if (old.marker) track.layer.removeLayer(old.marker);
+      }
+    }
+
+    function ensureRouteTrack(userId) {
+      let track = routes.get(userId);
+      if (!track) {
+        track = { points: [], layer: L.layerGroup().addTo(routeLayer) };
+        routes.set(userId, track);
+      }
+      return track;
+    }
+
+    function maybeAddRoutePoint(u) {
+      if (!u.located) return;
+      const dbm = signalForColor(u);
+      if (dbm == null) return;
+      const track = ensureRouteTrack(u.id);
+      const last = track.points[track.points.length - 1];
+      if (last) {
+        const dist = map.distance([last.lat, last.lng], [u.lat, u.lng]);
+        if (dist < 1) return;
+        if (dist < MIN_ROUTE_M && last.dbm === dbm) return;
+        if (last.t && u.updated && u.updated <= last.t && dist < MIN_ROUTE_M) return;
+      }
+      addRouteMarker(track, snapshotRoutePoint(u, dbm));
+      scheduleSaveRoutes();
+    }
+
+    let saveRoutesTimer = 0;
+    function scheduleSaveRoutes() {
+      clearTimeout(saveRoutesTimer);
+      saveRoutesTimer = setTimeout(saveRoutes, 800);
+    }
+
+    function saveRoutes() {
+      try {
+        const data = {};
+        routes.forEach((track, id) => {
+          data[id] = track.points.map((p) => ({
+            lat: p.lat, lng: p.lng, dbm: p.dbm, t: p.t, when: p.when,
+            name: p.name, network: p.network,
+            ssRsrp: p.ssRsrp, rsrp: p.rsrp, rsrq: p.rsrq, sinr: p.sinr,
+            rscp: p.rscp, cellName: p.cellName
+          }));
+        });
+        localStorage.setItem(ROUTE_STORE_KEY, JSON.stringify(data));
+      } catch (err) {
+        console.warn(err);
+      }
+    }
+
+    function loadRoutes() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(ROUTE_STORE_KEY) || "{}");
+        Object.entries(raw).forEach(([id, list]) => {
+          if (!Array.isArray(list) || !list.length) return;
+          const track = ensureRouteTrack(id);
+          list.forEach((p) => {
+            if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
+            addRouteMarker(track, p);
+          });
+        });
+      } catch (err) {
+        console.warn(err);
+      }
+    }
+
+    function clearRoutes() {
+      routes.forEach((track) => {
+        track.layer.clearLayers();
+        map.removeLayer(track.layer);
+      });
+      routes.clear();
+      localStorage.removeItem(ROUTE_STORE_KEY);
+    }
+
+    $("btnClearRoute").onclick = () => {
+      if (!routes.size) return;
+      if (!confirm("Xóa toàn bộ lộ trình điểm đo trên bản đồ?")) return;
+      clearRoutes();
+    };
+    loadRoutes();
+
     function refreshOpenPopup(marker, html) {
       const popup = marker.getPopup();
       const content = popup && popup.getElement() && popup.getElement().querySelector(".leaflet-popup-content");
@@ -825,6 +989,7 @@
       const bounds = [];
       users.filter((u) => u.located).forEach((u) => {
         keep.add(u.id);
+        maybeAddRoutePoint(u);
         const html = popup(u);
         let marker = markers.get(u.id);
         if (!marker) {
