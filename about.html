@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AutoCell — Giới thiệu</title>
+  <title>AutoCell — Liên hệ</title>
   <link rel="icon" href="favicon.png" type="image/png">
   <style>
     :root {
@@ -35,38 +35,26 @@
     nav { display: flex; gap: 14px; }
     nav a { color: #d7efe4; text-decoration: none; font-size: 13px; font-weight: 650; }
     nav a[aria-current] { color: #fff; }
-    main { max-width: 720px; margin: 0 auto; padding: 28px 20px 48px; }
+    main { max-width: 520px; margin: 0 auto; padding: 40px 20px 48px; }
     h1 { margin: 0 0 8px; font-size: 26px; }
-    h2 { margin: 28px 0 10px; font-size: 17px; }
-    p, li { color: #344054; font-size: 15px; }
-    .lead { color: var(--muted); margin: 0 0 20px; }
-    ul { margin: 0; padding-left: 1.2em; }
-    li { margin: 6px 0; }
-    a { color: var(--primary); }
-    .links {
-      display: grid;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .links a {
-      display: block;
+    .lead { color: var(--muted); margin: 0 0 22px; font-size: 15px; }
+    .card {
       background: #fff;
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 12px 14px;
-      text-decoration: none;
-      color: var(--ink);
-      font-weight: 650;
-      font-size: 14px;
+      border-radius: 14px;
+      padding: 18px 16px;
     }
-    .links a span { display: block; color: var(--muted); font-weight: 500; font-size: 12px; margin-top: 2px; }
-    footer {
-      margin-top: 36px;
-      padding-top: 16px;
-      border-top: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 13px;
+    .row {
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      gap: 6px 12px;
+      font-size: 15px;
+      margin: 0;
     }
+    .row dt { color: var(--muted); }
+    .row dd { margin: 0; font-weight: 650; }
+    .row a { color: var(--primary); text-decoration: none; font-weight: 650; }
+    .row a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -81,34 +69,18 @@
     </nav>
   </header>
   <main>
-    <h1>AutoCell</h1>
-    <p class="lead">Ứng dụng đo kiểm mạng di động (Android/iOS) và bảng điều khiển web theo dõi thiết bị theo thời gian thực.</p>
-
-    <h2>Ứng dụng di động</h2>
-    <ul>
-      <li>Đọc thông số mạng 3G / 4G / 5G (RSRP, RSRQ, SINR, PCI, TAC…).</li>
-      <li>Khớp trạm phục vụ từ database cell, hiển thị antenna và lịch sử serving.</li>
-      <li>Bản đồ đo kiểm, lộ trình tín hiệu, xuất KML.</li>
-      <li>Quản lý danh sách cell (thêm / sửa / xóa / import).</li>
-    </ul>
-
-    <h2>Web</h2>
-    <ul>
-      <li><a href="index.html">Bản đồ</a>: vị trí user online, trạm cell, lọc 3G/4G/5G, đo khoảng cách và góc.</li>
-      <li>Serving cell vẽ cánh sóng theo tilt/height; cell khác vẽ hướng azimuth.</li>
-      <li><a href="users.html">User</a>: danh sách thiết bị, trạng thái mạng và vị trí.</li>
-      <li><a href="auth.html">Đăng nhập</a>: Firebase Auth, phân quyền root / admin / support.</li>
-    </ul>
-
-    <h2>Tải &amp; liên hệ</h2>
-    <div class="links">
-      <a href="autocell.apk">Tải AutoCell (APK)<span>https://ebacson.github.io/autocell/autocell.apk</span></a>
-      <a href="mailto:ebacson@gmail.com">Email hỗ trợ<span>ebacson@gmail.com</span></a>
+    <h1>Hỗ trợ &amp; liên hệ</h1>
+    <p class="lead">Liên hệ khi cần hỗ trợ AutoCell.</p>
+    <div class="card">
+      <dl class="row">
+        <dt>Người hỗ trợ</dt>
+        <dd>Tạ Bắc Sơn</dd>
+        <dt>Email</dt>
+        <dd><a href="mailto:ebacson@gmail.com">ebacson@gmail.com</a></dd>
+        <dt>Điện thoại</dt>
+        <dd><a href="tel:0913485889">0913485889</a></dd>
+      </dl>
     </div>
-
-    <footer>
-      © 2026 AutoCell · Tạ Bắc Sơn
-    </footer>
   </main>
 </body>
 </html>
