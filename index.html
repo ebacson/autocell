@@ -68,10 +68,12 @@
     }
     .measure-row button.on { background: #c2410c; color: #fff; border-color: #c2410c; }
     #measureReadout { margin-top: 6px; font-size: 12px; color: var(--muted); min-height: 16px; }
-    #btnClearRoute {
-      width: 100%; margin-top: 8px; border: 1px solid var(--line); background: #fff;
-      border-radius: 8px; padding: 7px; cursor: pointer; font-size: 12px; color: var(--muted);
+    #btnClearMap {
+      width: 100%; margin-top: 8px; border: 1px solid #fecdca; background: #fff5f5;
+      border-radius: 8px; padding: 8px; cursor: pointer; font-size: 13px;
+      color: #b42318; font-weight: 650;
     }
+    #btnClearMap:hover { background: #fee4e2; }
     .seg-tip {
       background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
       font-weight: 700; box-shadow: none;
@@ -167,7 +169,7 @@
           <button id="btnClearMeasure" type="button">Xóa</button>
         </div>
         <div id="measureReadout">Bấm “Đo khoảng cách”, rồi chọn các điểm trên bản đồ.</div>
-        <button id="btnClearRoute" type="button">Xóa lộ trình đo</button>
+        <button id="btnClearMap" type="button">Clear map</button>
       </div>
       <div id="list"><div class="empty">Đang tải user…</div></div>
     </aside>
@@ -369,13 +371,13 @@
       for (let a0 = -half; a0 < half - 0.001; a0 += angStep) {
         const a1 = Math.min(a0 + angStep, half);
         const amid = (a0 + a1) / 2;
-        const sideFade = Math.pow(Math.max(0, 1 - Math.abs(amid) / half), 1.7);
+        const sideFade = Math.pow(Math.max(0, 1 - Math.abs(amid) / half), 1.15);
         for (let i = 0; i < radSteps; i++) {
           const r0 = (radius * i) / radSteps;
           const r1 = (radius * (i + 1)) / radSteps;
-          const radialFade = Math.pow(1 - (i + 0.5) / radSteps, 1.45);
-          const opacity = Math.min(1, 0.75 * 1.8 * sideFade * radialFade);
-          if (opacity < 0.015) continue;
+          const radialFade = Math.pow(1 - (i + 0.5) / radSteps, 0.85);
+          const opacity = Math.min(1, 0.35 + 0.65 * sideFade * radialFade);
+          if (opacity < 0.05) continue;
           const ring = r0 < 1
             ? [
                 [lat, lng],
@@ -961,9 +963,10 @@
       localStorage.removeItem(ROUTE_STORE_KEY);
     }
 
-    $("btnClearRoute").onclick = () => {
-      if (!routes.size) return;
-      if (!confirm("Xóa toàn bộ lộ trình điểm đo trên bản đồ?")) return;
+    $("btnClearMap").onclick = () => {
+      const count = [...routes.values()].reduce((n, t) => n + t.points.length, 0);
+      if (!count) return;
+      if (!confirm("Clear map — xóa " + count + " điểm đo?")) return;
       clearRoutes();
     };
     loadRoutes();
