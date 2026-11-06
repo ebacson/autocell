@@ -37,6 +37,9 @@
     }
     header h1 { margin: 0; font-size: 20px; font-weight: 650; }
     header p { margin: 4px 0 0; color: #c9e6da; font-size: 13px; }
+    header nav { display: flex; gap: 14px; margin-top: 8px; }
+    header nav a { color: #d7efe4; text-decoration: none; font-size: 13px; font-weight: 650; }
+    header nav a[aria-current] { color: #fff; }
     .admin-box { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .admin-box input, .toolbar input, .toolbar select {
       border: 1px solid var(--line);
@@ -128,6 +131,11 @@
     <div>
       <h1>AutoCell — Quản lý user</h1>
       <p>Danh sách thiết bị trên Firebase <span class="mono">users</span>. Online = cập nhật mạng trong 30 giây.</p>
+      <nav>
+        <a href="index.html">Bản đồ</a>
+        <a href="users.html" aria-current="page">User</a>
+        <a href="about.html">Giới thiệu</a>
+      </nav>
     </div>
     <div class="admin-box">
       <span id="adminState" class="pill off">Chỉ xem</span>

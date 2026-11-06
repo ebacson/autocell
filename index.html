@@ -1,278 +1,273 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <link rel="icon" href="favicon.png" type="image/png">
-<link rel="apple-touch-icon" href="qtr-playstore.png">
-<meta name="theme-color" content="#ff4e50">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AutoCell - Ứng Dụng Quản Lý & Phân Tích Mạng Di Động</title>
+  <title>AutoCell — Bản đồ user</title>
+  <link rel="icon" href="favicon.png" type="image/png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      margin: 0;
-      padding: 20px;
-      background: #fafafa;
-      color: #222;
+    :root { --ink: #1c2430; --muted: #667085; --line: #e6eaf0; --online: #067647; --offline: #98a2b3; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); }
+    header {
+      height: 52px;
+      background: #0e3b2e;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      gap: 12px;
     }
-    h1, h2, h3, h4 {
-      margin-top: 1.2em;
-      color: #333;
+    header strong { font-size: 16px; }
+    nav { display: flex; gap: 14px; }
+    nav a { color: #d7efe4; text-decoration: none; font-size: 14px; font-weight: 600; }
+    nav a[aria-current] { color: #fff; }
+    #wrap { height: calc(100% - 52px); display: flex; }
+    aside {
+      width: 320px;
+      border-right: 1px solid var(--line);
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
-    h1 { font-size: 2em; }
-    h2 { font-size: 1.6em; }
-    h3 { font-size: 1.3em; }
-    h4 { font-size: 1.1em; }
-    ul {
-      margin: 0 0 1em 1.5em;
-    }
-    strong { color: #000; }
-    a { color: #0066cc; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    footer {
-      margin-top: 40px;
+    .tools { padding: 10px; border-bottom: 1px solid var(--line); }
+    .tools input, .tools select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
       font-size: 14px;
-      color: #666;
-      text-align: center;
+      margin-bottom: 8px;
+    }
+    .counts { display: flex; gap: 8px; font-size: 12px; color: var(--muted); }
+    .counts b { color: var(--ink); }
+    #list { overflow: auto; flex: 1; }
+    .user {
+      width: 100%;
+      text-align: left;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+    .user:hover, .user.active { background: #f3faf6; }
+    .user b { display: block; font-size: 14px; }
+    .user span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .on { background: var(--online); }
+    .off { background: var(--offline); }
+    #map { flex: 1; min-width: 0; background: #e7eef2; }
+    .pin {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35);
+    }
+    .empty { padding: 16px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 800px) {
+      #wrap { flex-direction: column; }
+      aside { width: 100%; height: 42%; }
+      #map { height: 58%; }
     }
   </style>
 </head>
 <body>
-  <main>
-    <h1>📱 AutoCell - Ứng Dụng Quản Lý &amp; Phân Tích Mạng Di Động</h1>
+  <header>
+    <strong>AutoCell</strong>
+    <nav>
+      <a href="index.html" aria-current="page">Bản đồ</a>
+      <a href="users.html">User</a>
+      <a href="about.html">Giới thiệu</a>
+    </nav>
+  </header>
+  <div id="wrap">
+    <aside>
+      <div class="tools">
+        <input id="q" placeholder="Tìm user, mạng, thiết bị…">
+        <select id="filter">
+          <option value="located">Có vị trí</option>
+          <option value="online">Online</option>
+          <option value="all">Tất cả</option>
+          <option value="missing">Chưa có GPS</option>
+        </select>
+        <div class="counts">
+          <span>Trên bản đồ <b id="nMap">0</b></span>
+          <span>Online <b id="nOn">0</b></span>
+          <span>Tổng <b id="nAll">0</b></span>
+        </div>
+      </div>
+      <div id="list"><div class="empty">Đang tải user…</div></div>
+    </aside>
+    <div id="map"></div>
+  </div>
 
-    <h2>🎯 Tổng Quan Dự Án</h2>
-    <p><strong>AutoCell</strong> là một ứng dụng di động đa nền tảng (Android &amp; iOS) được thiết kế để thu thập, phân tích và quản lý thông tin mạng di động một cách chuyên nghiệp. Ứng dụng cung cấp các công cụ mạnh mẽ để giám sát chất lượng mạng, xuất báo cáo KML và quản lý dữ liệu cell một cách hiệu quả.</p>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
-    <h2>🚀 Các Chức Năng Chính</h2>
+    const app = initializeApp({
+      apiKey: "AIzaSyCh9CZyZEXkwqievZYXEc8dua28kj0zqbc",
+      authDomain: "autocell-ebacson.firebaseapp.com",
+      databaseURL: "https://autocell-ebacson-default-rtdb.firebaseio.com",
+      projectId: "autocell-ebacson",
+      storageBucket: "autocell-ebacson.firebasestorage.app"
+    });
 
-    <h3>📊 Giám Sát Mạng Real-time</h3>
-    <ul>
-      <li><strong>Thu thập dữ liệu mạng di động</strong> từ thiết bị Android thông qua Telephony API</li>
-      <li><strong>Theo dõi chất lượng tín hiệu</strong> cho tất cả công nghệ mạng (2G, 3G, 4G LTE, 5G NR)</li>
-      <li><strong>Hiển thị thông tin chi tiết</strong> về cell, signal strength, và các thông số kỹ thuật</li>
-      <li><strong>Cập nhật liên tục</strong> vị trí và trạng thái mạng</li>
-    </ul>
+    const ONLINE_MS = 30000;
+    const map = L.map("map").setView([16.2, 107.8], 6);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
+    const cluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 42 });
+    map.addLayer(cluster);
 
-    <h3>🗺️ Bản Đồ &amp; Định Tuyến</h3>
-    <ul>
-      <li><strong>Hiển thị bản đồ Google Maps</strong> với các marker cell và route tracking</li>
-      <li><strong>Thu thập dữ liệu route</strong> theo thời gian thực</li>
-      <li><strong>Xuất file KML</strong> với định dạng chuyên nghiệp tương thích Google Earth</li>
-      <li><strong>Marker có màu sắc</strong> theo chất lượng tín hiệu (Excellent/Good/Fair/Poor/Very Poor)</li>
-    </ul>
+    let users = [];
+    let markers = new Map();
+    let fitted = false;
+    let selected = null;
+    const $ = (id) => document.getElementById(id);
 
-    <h3>📱 Quản Lý Cell Database</h3>
-    <ul>
-      <li><strong>Thêm/Sửa/Xóa cell</strong> với thông tin chi tiết</li>
-      <li><strong>Copy cell</strong> để tạo nhanh các cell mới</li>
-      <li><strong>Lưu trữ Firebase</strong> với khả năng offline</li>
-      <li><strong>Tìm kiếm và lọc</strong> cell theo nhiều tiêu chí</li>
-    </ul>
+    function esc(v) {
+      return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+    function num(v) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+    function ago(ms) {
+      if (!ms) return "chưa cập nhật";
+      const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+      if (s < 60) return s + " giây trước";
+      if (s < 3600) return Math.floor(s / 60) + " phút trước";
+      if (s < 86400) return Math.floor(s / 3600) + " giờ trước";
+      return Math.floor(s / 86400) + " ngày trước";
+    }
 
-    <h3>🔐 Hệ Thống Xác Thực &amp; Phân Quyền</h3>
-    <ul>
-      <li><strong>Đăng nhập Firebase Authentication</strong></li>
-      <li><strong>Phân quyền người dùng</strong> (User/Supporter/Admin)</li>
-      <li><strong>Truy cập có kiểm soát</strong> vào các chức năng nâng cao</li>
-      <li><strong>Bảo mật dữ liệu</strong> người dùng</li>
-    </ul>
+    function mapUser(id, raw) {
+      const u = raw || {};
+      const net = u.networkinfo || {};
+      const loc = net.currentLocation || {};
+      const updated = Number(net.timestamp) || 0;
+      const lat = num(loc.latitude);
+      const lng = num(loc.longitude);
+      return {
+        id,
+        name: u.username || u.deviceName || "Chưa đặt tên",
+        phone: u.phone || "",
+        platform: u.platform || "",
+        network: [net.networkName, net.networkType].filter(Boolean).join(" · "),
+        lat, lng,
+        located: lat != null && lng != null && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !(lat === 0 && lng === 0),
+        updated,
+        online: updated > 0 && (Date.now() - updated) <= ONLINE_MS
+      };
+    }
 
-    <h3>📈 Báo Cáo &amp; Phân Tích</h3>
-    <ul>
-      <li><strong>Xuất KML chuyên nghiệp</strong> với HTML table formatting</li>
-      <li><strong>Thông tin chi tiết</strong> về tất cả thông số mạng</li>
-      <li><strong>Đánh giá chất lượng</strong> tín hiệu tự động</li>
-      <li><strong>Tương thích Google Earth</strong> và các ứng dụng GIS</li>
-    </ul>
+    function visible(u) {
+      const f = $("filter").value;
+      if (f === "located" && !u.located) return false;
+      if (f === "online" && !u.online) return false;
+      if (f === "missing" && u.located) return false;
+      const q = $("q").value.trim().toLowerCase();
+      if (!q) return true;
+      return [u.name, u.phone, u.platform, u.network, u.id].join(" ").toLowerCase().includes(q);
+    }
 
-    <h2>🎯 Phạm Vi Áp Dụng</h2>
+    function popup(u) {
+      return `<b>${esc(u.name)}</b><br>
+        <span style="color:${u.online ? "#067647" : "#667085"}">${u.online ? "Online" : "Offline"}</span>
+        · ${esc(u.platform || "—")}<br>
+        ${esc(u.network || "Chưa có mạng")}<br>
+        ${esc(u.phone || "")}<br>
+        <span style="color:#667085">${esc(ago(u.updated))}</span>`;
+    }
 
-    <h3>🏢 Viễn Thông &amp; Mạng</h3>
-    <ul>
-      <li><strong>Kỹ sư mạng</strong> cần giám sát chất lượng dịch vụ</li>
-      <li><strong>Nhà cung cấp dịch vụ</strong> muốn tối ưu hóa mạng</li>
-      <li><strong>Đội ngũ bảo trì</strong> cần kiểm tra vùng phủ sóng</li>
-      <li><strong>Quản lý chất lượng</strong> mạng di động</li>
-    </ul>
+    function draw() {
+      const shown = users.filter(visible);
+      $("nAll").textContent = users.length;
+      $("nOn").textContent = users.filter((u) => u.online).length;
+      $("nMap").textContent = users.filter((u) => u.located).length;
+      markers = new Map();
+      cluster.clearLayers();
+      const bounds = [];
+      users.filter((u) => u.located).forEach((u) => {
+        const icon = L.divIcon({
+          className: "",
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+          popupAnchor: [0, -10],
+          html: `<div class="pin" style="background:${u.online ? "#067647" : "#98a2b3"}"></div>`
+        });
+        const marker = L.marker([u.lat, u.lng], { icon, title: u.name });
+        marker.bindPopup(popup(u));
+        marker.on("click", () => { selected = u.id; renderList(); });
+        markers.set(u.id, marker);
+        cluster.addLayer(marker);
+        bounds.push([u.lat, u.lng]);
+      });
+      if (!fitted && bounds.length) {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+        fitted = true;
+      }
+      renderList(shown);
+    }
 
-    <h3>🏗️ Xây Dựng &amp; Bất Động Sản</h3>
-    <ul>
-      <li><strong>Kiến trúc sư</strong> cần đánh giá chất lượng mạng trong thiết kế</li>
-      <li><strong>Chủ đầu tư</strong> muốn kiểm tra vùng phủ sóng</li>
-      <li><strong>Quản lý dự án</strong> cần báo cáo về hạ tầng mạng</li>
-    </ul>
+    function renderList(shown) {
+      const list = shown || users.filter(visible);
+      const box = $("list");
+      if (!list.length) {
+        box.innerHTML = '<div class="empty">Không có user khớp bộ lọc.</div>';
+        return;
+      }
+      box.innerHTML = list.map((u) => `
+        <button class="user ${u.id === selected ? "active" : ""}" data-id="${esc(u.id)}">
+          <b><i class="dot ${u.online ? "on" : "off"}"></i>${esc(u.name)}</b>
+          <span>${esc(u.network || "Chưa có mạng")} · ${u.located ? esc(ago(u.updated)) : "chưa có GPS"}</span>
+        </button>`).join("");
+    }
 
-    <h3>🚗 Giao Thông &amp; Vận Tải</h3>
-    <ul>
-      <li><strong>Tài xế</strong> cần kiểm tra chất lượng mạng trên tuyến đường</li>
-      <li><strong>Công ty vận tải</strong> muốn tối ưu hóa route với vùng phủ sóng tốt</li>
-      <li><strong>Quản lý fleet</strong> cần giám sát chất lượng mạng</li>
-    </ul>
+    $("list").onclick = (e) => {
+      const btn = e.target.closest("button[data-id]");
+      if (!btn) return;
+      selected = btn.dataset.id;
+      const u = users.find((x) => x.id === selected);
+      renderList();
+      if (!u || !u.located) return;
+      const marker = markers.get(u.id);
+      map.flyTo([u.lat, u.lng], Math.max(map.getZoom(), 14), { duration: 0.6 });
+      if (marker) {
+        cluster.zoomToShowLayer(marker, () => marker.openPopup());
+      }
+    };
+    $("q").oninput = draw;
+    $("filter").onchange = draw;
 
-    <h3>🏭 Công Nghiệp &amp; Sản Xuất</h3>
-    <ul>
-      <li><strong>Kỹ sư công nghiệp</strong> cần đánh giá mạng trong nhà máy</li>
-      <li><strong>Quản lý sản xuất</strong> muốn đảm bảo kết nối mạng ổn định</li>
-      <li><strong>An toàn lao động</strong> cần kiểm tra vùng phủ sóng khẩn cấp</li>
-    </ul>
+    onValue(ref(getDatabase(app), "users"), (snap) => {
+      const val = snap.val() || {};
+      users = Object.keys(val).map((id) => mapUser(id, val[id]));
+      users.sort((a, b) => (b.online - a.online) || (b.updated - a.updated) || a.name.localeCompare(b.name));
+      draw();
+    }, (err) => {
+      $("list").innerHTML = '<div class="empty">Không đọc được user: ' + esc(err.message) + "</div>";
+    });
 
-    <h3>🏥 Y Tế &amp; Giáo Dục</h3>
-    <ul>
-      <li><strong>Bệnh viện</strong> cần đảm bảo kết nối mạng ổn định</li>
-      <li><strong>Trường học</strong> muốn kiểm tra chất lượng mạng</li>
-      <li><strong>Cơ sở y tế</strong> cần giám sát vùng phủ sóng</li>
-    </ul>
-
-    <h2>💎 Giá Trị Mang Lại</h2>
-
-    <h3>🔧 Cho Kỹ Sư &amp; Chuyên Gia</h3>
-    <ul>
-      <li><strong>Tiết kiệm thời gian</strong> thu thập dữ liệu mạng thủ công</li>
-      <li><strong>Dữ liệu chính xác</strong> với độ tin cậy cao</li>
-      <li><strong>Báo cáo chuyên nghiệp</strong> dễ dàng chia sẻ</li>
-      <li><strong>Phân tích sâu</strong> về chất lượng mạng</li>
-    </ul>
-
-    <h3>💼 Cho Doanh Nghiệp</h3>
-    <ul>
-      <li><strong>Tối ưu hóa mạng</strong> dựa trên dữ liệu thực tế</li>
-      <li><strong>Giảm chi phí</strong> bảo trì và vận hành</li>
-      <li><strong>Tăng chất lượng</strong> dịch vụ khách hàng</li>
-      <li><strong>Ra quyết định</strong> dựa trên dữ liệu</li>
-    </ul>
-
-    <h3>🌍 Cho Xã Hội</h3>
-    <ul>
-      <li><strong>Cải thiện chất lượng</strong> mạng di động</li>
-      <li><strong>Tăng độ tin cậy</strong> của hạ tầng viễn thông</li>
-      <li><strong>Hỗ trợ phát triển</strong> công nghệ 5G</li>
-      <li><strong>Đóng góp vào</strong> chuyển đổi số</li>
-    </ul>
-
-    <h2>🛠️ Công Nghệ Sử Dụng</h2>
-
-    <h3>📱 Frontend</h3>
-    <ul>
-      <li><strong>Android:</strong> Java, Google Maps API, Telephony API</li>
-      <li><strong>iOS:</strong> Swift, MapKit, Core Location</li>
-      <li><strong>UI/UX:</strong> Material Design, iOS Human Interface Guidelines</li>
-    </ul>
-
-    <h3>🔥 Backend &amp; Database</h3>
-    <ul>
-      <li><strong>Firebase Realtime Database</strong> - Lưu trữ dữ liệu real-time</li>
-      <li><strong>Firebase Authentication</strong> - Xác thực người dùng</li>
-      <li><strong>Firebase Cloud Storage</strong> - Lưu trữ file và media</li>
-      <li><strong>Offline Support</strong> - Hoạt động không cần internet</li>
-    </ul>
-
-    <h3>🗺️ Mapping &amp; GIS</h3>
-    <ul>
-      <li><strong>Google Maps API</strong> - Hiển thị bản đồ và marker</li>
-      <li><strong>KML Export</strong> - Định dạng chuẩn cho GIS</li>
-      <li><strong>GPS &amp; Location Services</strong> - Thu thập vị trí chính xác</li>
-    </ul>
-
-    <h3>📊 Data Processing</h3>
-    <ul>
-      <li><strong>Signal Strength Analysis</strong> - Phân tích chất lượng tín hiệu</li>
-      <li><strong>Route Tracking</strong> - Theo dõi tuyến đường</li>
-      <li><strong>Real-time Monitoring</strong> - Giám sát liên tục</li>
-    </ul>
-
-    <h2>📋 Tính Năng Kỹ Thuật</h2>
-
-    <h3>📡 Mạng Di Động Hỗ Trợ</h3>
-    <ul>
-      <li><strong>2G (GSM):</strong> ARFCN, BSIC, Cell ID, LAC</li>
-      <li><strong>3G (WCDMA):</strong> UARFCN, PSC, RNC ID, Cell ID, LAC</li>
-      <li><strong>4G (LTE):</strong> EARFCN, PCI, eNodeB ID, TAC, RSRP, RSRQ, SNR</li>
-      <li><strong>5G (NR):</strong> NRARFCN, PCI, gNodeB ID, NCI, SS-RSRP, SS-RSRQ, SS-SINR</li>
-    </ul>
-
-    <h3>🎨 KML Export Features</h3>
-    <ul>
-      <li><strong>HTML Table Formatting</strong> - Thông tin chi tiết và dễ đọc</li>
-      <li><strong>Dynamic Color Coding</strong> - Màu sắc theo chất lượng tín hiệu</li>
-      <li><strong>Comprehensive Data</strong> - Tất cả thông số mạng có sẵn</li>
-      <li><strong>Professional Styling</strong> - Tương thích Google Earth</li>
-    </ul>
-
-    <h3>🔐 Security &amp; Privacy</h3>
-    <ul>
-      <li><strong>User Authentication</strong> - Đăng nhập an toàn</li>
-      <li><strong>Role-based Access</strong> - Phân quyền chi tiết</li>
-      <li><strong>Data Encryption</strong> - Mã hóa dữ liệu</li>
-      <li><strong>Privacy Protection</strong> - Bảo vệ thông tin cá nhân</li>
-    </ul>
-
-    <h2>🚀 Hướng Phát Triển Tương Lai</h2>
-
-    <h3>🔮 Tính Năng Mới</h3>
-    <ul>
-      <li><strong>AI-powered Analysis</strong> - Phân tích thông minh dựa trên AI</li>
-      <li><strong>Predictive Maintenance</strong> - Dự đoán bảo trì mạng</li>
-      <li><strong>Cloud Dashboard</strong> - Bảng điều khiển web</li>
-      <li><strong>API Integration</strong> - Tích hợp với hệ thống khác</li>
-    </ul>
-
-    <h3>📱 Platform Expansion</h3>
-    <ul>
-      <li><strong>Web Application</strong> - Ứng dụng web responsive</li>
-      <li><strong>Desktop Software</strong> - Phần mềm desktop</li>
-      <li><strong>API Services</strong> - Dịch vụ API cho bên thứ ba</li>
-      <li><strong>IoT Integration</strong> - Tích hợp với thiết bị IoT</li>
-    </ul>
-
-    <h3>🌐 Global Reach</h3>
-    <ul>
-      <li><strong>Multi-language Support</strong> - Hỗ trợ đa ngôn ngữ</li>
-      <li><strong>Regional Compliance</strong> - Tuân thủ quy định địa phương</li>
-      <li><strong>International Standards</strong> - Tiêu chuẩn quốc tế</li>
-      <li><strong>Local Partnerships</strong> - Đối tác địa phương</li>
-    </ul>
-
-    <h2>📞 Liên Hệ &amp; Hỗ Trợ</h2>
-
-    <h3>👥 Nhà Phát Triển</h3>
-    <ul>
-      <li><strong>Developer:</strong> Tạ Bắc Sơn </li>
-     
-    </ul>
-    <h3>👥 Tải ứng dụng:</h3>
-    <ul>
-      <li><strong>Link download:</strong> <a href="https://ebacson.github.io/autocell/autocell.apk" target="_blank">https://ebacson.github.io/autocell/autocell.apk </a></li>
-     
-    </ul>
-    <h3>👥 Quản lý user:</h3>
-    <ul>
-      <li><strong>Danh sách thiết bị:</strong> <a href="users.html">https://ebacson.github.io/autocell/users.html</a></li>
-    </ul>
-    <h3>📧 Thông Tin Liên Lạc</h3>
-    <ul>
-      <li><strong>Email:</strong> <a href="mailto:ebacson@gmail.com">ebacson@gmail.com</a></li>
-      <li><strong>Website:</strong> <a href="https://ebacson.github.io/autocell" target="_blank">https://ebacson.github.io/autocell</a></li>
-  
-    </ul>
-
-    <h3>🔗 Social Media</h3>
-    <ul>
-      
-     
-      <li><strong>Facebook:</strong>https://www.facebook.com/ebacson</li>
-     
-    </ul>
-
-    <h2>📄 License</h2>
-    <p>Dự án AutoCell được phát triển bởi Tạ Bắc Sơn và được bảo vệ bởi bản quyền © 2025. Tất cả quyền được bảo lưu.</p>
-
-    <p><em>AutoCell - Giải pháp toàn diện cho quản lý mạng di động thông minh 🚀</em></p>
-  </main>
-
-  <footer>
-    <p>&copy; 2025 AutoCell. All rights reserved.</p>
-  </footer>
+    setInterval(() => {
+      let changed = false;
+      users.forEach((u) => {
+        const online = u.updated > 0 && (Date.now() - u.updated) <= ONLINE_MS;
+        if (online !== u.online) { u.online = online; changed = true; }
+      });
+      if (changed) draw();
+    }, 5000);
+  </script>
 </body>
 </html>
