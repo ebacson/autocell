@@ -63,11 +63,6 @@
       background: #1d4ed8; color: #fff; border: 2px solid #fff; font-size: 11px; font-weight: 700;
     }
     #list { overflow: auto; flex: 1; min-height: 80px; }
-    #detail {
-      display: none; border-top: 1px solid var(--line); overflow: auto;
-      max-height: 52%; padding: 10px 12px; background: #f8fafc;
-    }
-    #detail.show { display: block; }
     .user {
       width: 100%;
       text-align: left;
@@ -134,7 +129,6 @@
         </div>
         <div id="measureReadout">Bấm “Đo khoảng cách”, rồi chọn các điểm trên bản đồ.</div>
       </div>
-      <div id="detail"></div>
       <div id="list"><div class="empty">Đang tải user…</div></div>
     </aside>
     <div id="map"></div>
@@ -566,7 +560,6 @@
           marker.bindPopup(html, { maxWidth: 360, minWidth: 260, autoPan: true });
           marker.on("click", () => {
             selected = u.id;
-            showUserDetail(users.find((x) => x.id === u.id) || u);
             renderList();
           });
           markers.set(u.id, marker);
@@ -591,15 +584,6 @@
       renderList(shown);
     }
 
-    function showUserDetail(u) {
-      const box = $("detail");
-      if (!u) { box.classList.remove("show"); box.innerHTML = ""; return; }
-      const top = box.scrollTop;
-      box.classList.add("show");
-      box.innerHTML = popup(u);
-      box.scrollTop = top;
-    }
-
     function renderList(shown) {
       const list = shown || users.filter(visible);
       const box = $("list");
@@ -621,7 +605,6 @@
       if (!btn) return;
       selected = btn.dataset.id;
       const u = users.find((x) => x.id === selected);
-      showUserDetail(u);
       renderList();
       if (!u || !u.located) return;
       const marker = markers.get(u.id);
@@ -638,7 +621,6 @@
       users = Object.keys(val).map((id) => mapUser(id, val[id]));
       users.sort((a, b) => (b.online - a.online) || (b.updated - a.updated) || a.name.localeCompare(b.name));
       draw();
-      if (selected) showUserDetail(users.find((u) => u.id === selected) || null);
     }, (err) => {
       $("list").innerHTML = '<div class="empty">Không đọc được user: ' + esc(err.message) + "</div>";
     });
