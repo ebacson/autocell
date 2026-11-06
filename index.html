@@ -1068,18 +1068,11 @@
           pts.push(destination(slat, slng, r, az + 30));
         }
       }
-      const marker = markers.get(u.id);
-      const open = () => {
-        if (!marker) return;
-        cluster.zoomToShowLayer(marker, () => marker.openPopup());
-      };
       if (pts.length === 1) {
         map.flyTo(pts[0], Math.max(map.getZoom(), 14), { duration: 0.6 });
-        setTimeout(open, 650);
         return;
       }
       map.flyToBounds(pts, { padding: [56, 56], maxZoom: 16, duration: 0.7 });
-      setTimeout(open, 750);
     }
 
     $("list").onclick = (e) => {
