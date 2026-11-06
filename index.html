@@ -235,10 +235,28 @@
       return [φ2 * 180 / Math.PI, λ2 * 180 / Math.PI];
     }
 
+    // Giống MapFragment Android: rfar từ tilt/height, clamp 100–500 m; chỉ vẽ 1 vùng (không rnear).
+    function sectorRadius(tilt, height) {
+      const ha = height > 0 ? height : 30;
+      const hu = 1.5;
+      const hpbwHalf = 5 * Math.PI / 180;
+      const tiltRad = (Number.isFinite(tilt) ? tilt : 0) * Math.PI / 180;
+      const angleFar = tiltRad - hpbwHalf;
+      let rfar = 2000;
+      if (angleFar > 0 && angleFar < Math.PI / 2) {
+        rfar = (ha - hu) / Math.tan(angleFar);
+      }
+      return Math.max(100, Math.min(rfar, 500));
+    }
+
     function sectorRing(lat, lng, azimuth, radius, sweep) {
-      const start = azimuth - sweep / 2;
+      const half = sweep / 2;
+      const start = azimuth - half;
+      const end = azimuth + half;
       const pts = [[lat, lng]];
-      for (let i = 0; i <= 8; i++) pts.push(destination(lat, lng, radius, start + (sweep * i) / 8));
+      for (let deg = start; deg <= end; deg += 2) {
+        pts.push(destination(lat, lng, radius, deg));
+      }
       pts.push([lat, lng]);
       return pts;
     }
@@ -251,7 +269,8 @@
         if (!bounds.contains([site.lat, site.lng])) return;
         site.cells.forEach((cell) => {
           if (!techVisible(cell.tech)) return;
-          const sector = L.polygon(sectorRing(site.lat, site.lng, cell.azimuth, 140, 60), {
+          const radius = sectorRadius(cell.tilt, cell.height);
+          const sector = L.polygon(sectorRing(site.lat, site.lng, cell.azimuth, radius, 60), {
             color: techColor(cell.tech),
             weight: 1,
             fillColor: techColor(cell.tech),
