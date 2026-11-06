@@ -147,11 +147,7 @@
   <main>
     <div class="banner" id="banner"></div>
     <section class="card" id="webRolesCard" style="margin-bottom:12px;padding:12px 14px" hidden>
-      <h2 style="margin:0 0 8px;font-size:15px">Tài khoản web (Firebase Auth)</h2>
-      <p class="muted" style="margin:0 0 10px;font-size:12px">
-        Root (<span class="mono">ebacson@gmail.com</span>) cấp admin + support.
-        Admin cấp support. Quyền này khác với cờ admin/support trên thiết bị app.
-      </p>
+      <h2 style="margin:0 0 8px;font-size:15px">Tài khoản web</h2>
       <div style="overflow:auto">
         <table>
           <thead>
@@ -372,8 +368,8 @@
           <button class="danger" data-act="delete" ${canEdit ? "" : "disabled"}>Xóa thiết bị</button>
         </div>
         <p class="muted">${authUser
-          ? ("Đang sửa với quyền web " + esc(caps.label) + " · " + esc(authUser.email) + ".")
-          : "Đăng nhập Firebase Auth để sửa. Root cấp admin/support; admin cấp support."}</p>`;
+          ? ("Đang sửa với quyền " + esc(caps.label) + " · " + esc(authUser.email) + ".")
+          : "Đăng nhập để sửa."}</p>`;
     }
 
     function setBanner(text) {

@@ -99,7 +99,6 @@
     }
     .msg.err { display: block; background: #fdeceb; color: var(--danger); }
     .msg.ok { display: block; background: #e7f6ef; color: #067647; }
-    .hint { margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.45; }
   </style>
 </head>
 <body>
@@ -115,7 +114,7 @@
   <main>
     <div class="card">
       <h1 id="title">Đăng nhập</h1>
-      <p class="sub" id="subtitle">Dùng Firebase Auth (email + mật khẩu) để quản lý quyền trên web.</p>
+      <p class="sub" id="subtitle"></p>
       <div class="tabs">
         <button type="button" class="on" id="tabLogin">Đăng nhập</button>
         <button type="button" id="tabRegister">Đăng ký</button>
@@ -135,10 +134,6 @@
         </div>
       </form>
       <div class="msg" id="msg"></div>
-      <p class="hint">
-        Tài khoản <b>ebacson@gmail.com</b> là root: cấp admin và support.
-        Admin chỉ được cấp support. Sau khi đăng nhập, mở trang User để quản lý thiết bị và quyền web.
-      </p>
     </div>
   </main>
 
@@ -168,9 +163,7 @@
       $("tabLogin").classList.toggle("on", !reg);
       $("tabRegister").classList.toggle("on", reg);
       $("title").textContent = reg ? "Đăng ký" : "Đăng nhập";
-      $("subtitle").textContent = reg
-        ? "Tạo tài khoản web mới. Mặc định chưa có quyền admin/support."
-        : "Dùng Firebase Auth (email + mật khẩu) để quản lý quyền trên web.";
+      $("subtitle").textContent = "";
       $("nameWrap").hidden = !reg;
       $("password").autocomplete = reg ? "new-password" : "current-password";
       $("submit").textContent = reg ? "Tạo tài khoản" : "Đăng nhập";
