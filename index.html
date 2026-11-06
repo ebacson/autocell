@@ -23,9 +23,16 @@
       gap: 12px;
     }
     header strong { font-size: 16px; }
-    nav { display: flex; gap: 14px; }
+    header .right { display: flex; align-items: center; gap: 14px; }
+    nav { display: flex; gap: 14px; align-items: center; }
     nav a { color: #d7efe4; text-decoration: none; font-size: 14px; font-weight: 600; }
     nav a[aria-current] { color: #fff; }
+    .auth-box { display: flex; align-items: center; gap: 8px; }
+    .auth-box .who { font-size: 13px; color: #d7efe4; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .auth-box button {
+      border: 1px solid #3d6b59; background: transparent; color: #d7efe4;
+      border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
     #wrap { height: calc(100% - 52px); display: flex; }
     aside {
       width: 320px;
@@ -115,12 +122,18 @@
 <body>
   <header>
     <strong>AutoCell</strong>
-    <nav>
-      <a href="index.html" aria-current="page">Bản đồ</a>
-      <a href="users.html">User</a>
-      <a href="about.html">Giới thiệu</a>
-      <a href="auth.html">Đăng nhập</a>
-    </nav>
+    <div class="right">
+      <nav>
+        <a href="index.html" aria-current="page">Bản đồ</a>
+        <a href="users.html">User</a>
+        <a href="about.html">Giới thiệu</a>
+        <a href="auth.html" id="navLogin">Đăng nhập</a>
+      </nav>
+      <div class="auth-box" id="authBox" hidden>
+        <span class="who" id="authWho"></span>
+        <button type="button" id="btnLogout">Đăng xuất</button>
+      </div>
+    </div>
   </header>
   <div id="wrap">
     <aside>
@@ -158,19 +171,22 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-
-    const app = initializeApp({
-      apiKey: "AIzaSyCh9CZyZEXkwqievZYXEc8dua28kj0zqbc",
-      authDomain: "autocell-ebacson.firebaseapp.com",
-      databaseURL: "https://autocell-ebacson-default-rtdb.firebaseio.com",
-      projectId: "autocell-ebacson",
-      storageBucket: "autocell-ebacson.firebasestorage.app"
-    });
+    import { ref, onValue, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { db, watchAuth, logout } from "./js/auth.js";
 
     const ONLINE_MS = 30000;
     const $ = (id) => document.getElementById(id);
+
+    watchAuth((user) => {
+      const loggedIn = !!user;
+      $("navLogin").hidden = loggedIn;
+      $("authBox").hidden = !loggedIn;
+      if (loggedIn) {
+        $("authWho").textContent = user.displayName || user.email || "User";
+        $("authWho").title = user.email || "";
+      }
+    });
+    $("btnLogout").onclick = () => logout();
     const map = L.map("map").setView([16.2, 107.8], 6);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
