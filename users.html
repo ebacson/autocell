@@ -135,17 +135,32 @@
         <a href="index.html">Bản đồ</a>
         <a href="users.html" aria-current="page">User</a>
         <a href="about.html">Giới thiệu</a>
+        <a href="auth.html">Đăng nhập</a>
       </nav>
     </div>
     <div class="admin-box">
-      <span id="adminState" class="pill off">Chỉ xem</span>
-      <input id="adminUser" placeholder="Username admin trên app" autocomplete="off">
-      <button class="primary" id="btnUnlock" type="button">Mở quyền sửa</button>
-      <button class="ghost" id="btnLock" type="button" hidden>Khóa</button>
+      <span id="adminState" class="pill off">Chưa đăng nhập</span>
+      <a href="auth.html?next=users.html"><button class="primary" id="btnLogin" type="button">Đăng nhập</button></a>
+      <button class="ghost" id="btnLogout" type="button" hidden>Đăng xuất</button>
     </div>
   </header>
   <main>
     <div class="banner" id="banner"></div>
+    <section class="card" id="webRolesCard" style="margin-bottom:12px;padding:12px 14px" hidden>
+      <h2 style="margin:0 0 8px;font-size:15px">Tài khoản web (Firebase Auth)</h2>
+      <p class="muted" style="margin:0 0 10px;font-size:12px">
+        Root (<span class="mono">ebacson@gmail.com</span>) cấp admin + support.
+        Admin cấp support. Quyền này khác với cờ admin/support trên thiết bị app.
+      </p>
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr><th>Email</th><th>Vai trò</th><th>Thao tác</th></tr>
+          </thead>
+          <tbody id="webRolesBody"></tbody>
+        </table>
+      </div>
+    </section>
     <section class="stats">
       <div class="stat"><b id="nTotal">—</b><span>Tổng thiết bị</span></div>
       <div class="stat"><b id="nOnline">—</b><span>Online</span></div>
@@ -188,22 +203,17 @@
   </main>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-
-    const app = initializeApp({
-      apiKey: "AIzaSyCh9CZyZEXkwqievZYXEc8dua28kj0zqbc",
-      authDomain: "autocell-ebacson.firebaseapp.com",
-      databaseURL: "https://autocell-ebacson-default-rtdb.firebaseio.com",
-      projectId: "autocell-ebacson",
-      storageBucket: "autocell-ebacson.firebasestorage.app"
-    });
-    const db = getDatabase(app);
+    import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import {
+      db, watchAuth, watchRoles, logout, setWebRoleFlags, isRootEmail, authErrorMessage
+    } from "./js/auth.js";
 
     const ONLINE_MS = 30000;
     let users = [];
     let selectedId = null;
-    let adminName = sessionStorage.getItem("autocellAdmin") || "";
+    let authUser = null;
+    let caps = { root: false, admin: false, support: false, canGrantAdmin: false, canGrantSupport: false, canEditDevices: false, label: "User" };
+    let webAccounts = [];
 
     const $ = (id) => document.getElementById(id);
 
@@ -333,7 +343,9 @@
       }
       const loc = u.lat == null ? "—" : `${u.lat.toFixed(6)}, ${u.lng.toFixed(6)}`;
       const map = u.lat == null ? "" : `<a href="https://www.google.com/maps?q=${u.lat},${u.lng}" target="_blank" rel="noopener">Mở bản đồ</a>`;
-      const locked = !adminName;
+      const canEdit = !!caps.canEditDevices;
+      const canSupport = !!caps.canGrantSupport;
+      const canAdmin = !!caps.canGrantAdmin;
       box.innerHTML = `
         <h2>${esc(u.username || u.deviceName || "Thiết bị")}</h2>
         <div class="kv">
@@ -343,7 +355,7 @@
           <span>Nền tảng</span><b>${esc(u.platform || "—")}</b>
           <span>Tên máy</span><b>${esc(u.deviceName || "—")}</b>
           <span>Tiêu đề</span><b>${esc(u.appTitle || "—")}</b>
-          <span>Quyền</span><b>${u.admin ? "Admin" : "User"}${u.support ? " · Support" : ""}</b>
+          <span>Quyền app</span><b>${u.admin ? "Admin" : "User"}${u.support ? " · Support" : ""}</b>
           <span>Login</span><b>${u.hasLogin ? "Có" : "Không"} · ${esc(ts(u.lastLogin))}</b>
           <span>Mạng</span><b>${esc([u.networkName, u.networkType, u.tech].filter(Boolean).join(" · ") || "—")}</b>
           <span>Dịch vụ</span><b>${esc(u.serviceState || "—")} / ${esc(u.dataState || "—")}</b>
@@ -354,12 +366,14 @@
           <span>Cập nhật</span><b>${esc(ts(u.updated))}</b>
         </div>
         <div class="actions">
-          <button data-act="name" ${locked ? "disabled" : ""}>Sửa username</button>
-          <button data-act="support" ${locked ? "disabled" : ""}>${u.support ? "Hủy Support" : "Cấp Support"}</button>
-          <button data-act="admin" ${locked ? "disabled" : ""}>${u.admin ? "Gỡ Admin" : "Cấp Admin"}</button>
-          <button class="danger" data-act="delete" ${locked ? "disabled" : ""}>Xóa thiết bị</button>
+          <button data-act="name" ${canEdit ? "" : "disabled"}>Sửa username</button>
+          <button data-act="support" ${canSupport ? "" : "disabled"}>${u.support ? "Hủy Support" : "Cấp Support"}</button>
+          <button data-act="admin" ${canAdmin ? "" : "disabled"}>${u.admin ? "Gỡ Admin" : "Cấp Admin"}</button>
+          <button class="danger" data-act="delete" ${canEdit ? "" : "disabled"}>Xóa thiết bị</button>
         </div>
-        <p class="muted">${locked ? "Nhập username có cờ admin trên app để sửa." : "Đang sửa với quyền " + esc(adminName) + "."}</p>`;
+        <p class="muted">${authUser
+          ? ("Đang sửa với quyền web " + esc(caps.label) + " · " + esc(authUser.email) + ".")
+          : "Đăng nhập Firebase Auth để sửa. Root cấp admin/support; admin cấp support."}</p>`;
     }
 
     function setBanner(text) {
@@ -368,33 +382,57 @@
       b.textContent = text || "";
     }
 
-    function syncAdminUi() {
-      $("adminState").textContent = adminName ? "Admin: " + adminName : "Chỉ xem";
-      $("adminState").className = "pill " + (adminName ? "on" : "off");
-      $("btnLock").hidden = !adminName;
-      $("btnUnlock").hidden = !!adminName;
-      $("adminUser").hidden = !!adminName;
+    function syncAuthUi() {
+      $("adminState").textContent = authUser ? (caps.label + ": " + authUser.email) : "Chưa đăng nhập";
+      $("adminState").className = "pill " + (authUser ? "on" : "off");
+      $("btnLogin").hidden = !!authUser;
+      $("btnLogout").hidden = !authUser;
+      $("webRolesCard").hidden = !(caps.canGrantSupport || caps.canGrantAdmin);
+      renderWebRoles();
     }
 
-    $("btnUnlock").onclick = () => {
-      const name = $("adminUser").value.trim().toLowerCase();
-      const hit = users.find((u) => u.admin && u.username.toLowerCase() === name);
-      if (!hit) {
-        setBanner("Không thấy username này với cờ admin=true. Quyền admin được cấp trên app (nhánh users).");
+    function renderWebRoles() {
+      const body = $("webRolesBody");
+      if (!body) return;
+      if (!webAccounts.length) {
+        body.innerHTML = '<tr><td colspan="3" class="empty">Chưa có tài khoản web đăng ký.</td></tr>';
         return;
       }
-      adminName = hit.username;
-      sessionStorage.setItem("autocellAdmin", adminName);
-      setBanner("");
-      syncAdminUi();
-      renderDetail();
+      body.innerHTML = webAccounts.map((a) => {
+        const root = isRootEmail(a.email);
+        const role = root ? "Root" : a.admin ? "Admin" : a.support ? "Support" : "User";
+        const adminBtn = root || !caps.canGrantAdmin
+          ? ""
+          : `<button data-web="${esc(a.uid)}" data-flag="admin">${a.admin ? "Gỡ Admin" : "Cấp Admin"}</button>`;
+        const supportBtn = root || !caps.canGrantSupport
+          ? ""
+          : `<button data-web="${esc(a.uid)}" data-flag="support">${a.support ? "Hủy Support" : "Cấp Support"}</button>`;
+        return `<tr>
+          <td><b>${esc(a.email || a.uid)}</b>${root ? ' <span class="pill tag">Root</span>' : ""}
+            <div class="mono muted">${esc(a.uid)}</div></td>
+          <td><span class="pill tag">${esc(role)}</span></td>
+          <td class="actions">${adminBtn}${supportBtn || (root ? '<span class="muted">Không đổi</span>' : "")}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    $("btnLogout").onclick = async () => {
+      await logout();
     };
 
-    $("btnLock").onclick = () => {
-      adminName = "";
-      sessionStorage.removeItem("autocellAdmin");
-      syncAdminUi();
-      renderDetail();
+    $("webRolesBody").onclick = async (e) => {
+      const btn = e.target.closest("button[data-web]");
+      if (!btn) return;
+      const acc = webAccounts.find((a) => a.uid === btn.dataset.web);
+      if (!acc) return;
+      const flag = btn.dataset.flag;
+      try {
+        if (flag === "admin") await setWebRoleFlags(acc.uid, { admin: !acc.admin }, caps);
+        if (flag === "support") await setWebRoleFlags(acc.uid, { support: !acc.support }, caps);
+        setBanner("");
+      } catch (err) {
+        setBanner(authErrorMessage(err));
+      }
     };
 
     $("q").oninput = render;
@@ -408,32 +446,46 @@
 
     $("detail").onclick = async (e) => {
       const btn = e.target.closest("button[data-act]");
-      if (!btn || !adminName) return;
+      if (!btn) return;
       const u = users.find((x) => x.id === selectedId);
       if (!u) return;
       const userRef = ref(db, "users/" + u.id);
       try {
         if (btn.dataset.act === "name") {
+          if (!caps.canEditDevices) throw new Error("Cần đăng nhập với quyền Support trở lên.");
           const next = prompt("Username mới", u.username);
           if (!next || !next.trim()) return;
           await update(userRef, { username: next.trim() });
         } else if (btn.dataset.act === "support") {
+          if (!caps.canGrantSupport) throw new Error("Chỉ root hoặc admin mới được cấp/gỡ Support thiết bị.");
           await update(userRef, { support: !u.support });
         } else if (btn.dataset.act === "admin") {
-          if (u.username.toLowerCase() === adminName.toLowerCase() && u.admin) {
-            if (!confirm("Gỡ admin của chính tài khoản đang dùng để mở khóa trang?")) return;
-          }
+          if (!caps.canGrantAdmin) throw new Error("Chỉ root mới được cấp/gỡ Admin thiết bị.");
           await update(userRef, { admin: !u.admin });
         } else if (btn.dataset.act === "delete") {
+          if (!caps.canEditDevices) throw new Error("Cần đăng nhập với quyền Support trở lên.");
           if (!confirm("Xóa vĩnh viễn thiết bị " + (u.username || u.id) + "?")) return;
           await remove(userRef);
           selectedId = null;
         }
         setBanner("");
       } catch (err) {
-        setBanner("Firebase từ chối ghi: " + (err && err.message ? err.message : err));
+        setBanner(authErrorMessage(err));
       }
     };
+
+    watchAuth((user, role, nextCaps) => {
+      authUser = user;
+      caps = nextCaps;
+      syncAuthUi();
+      renderDetail();
+    });
+
+    watchRoles((list, err) => {
+      if (err) setBanner("Không đọc webRoles: " + err.message);
+      webAccounts = list;
+      renderWebRoles();
+    });
 
     onValue(ref(db, "users"), (snap) => {
       const val = snap.val() || {};
@@ -442,11 +494,7 @@
         if (a.online !== b.online) return a.online ? -1 : 1;
         return b.updated - a.updated;
       });
-      if (adminName && !users.some((u) => u.admin && u.username.toLowerCase() === adminName.toLowerCase())) {
-        adminName = "";
-        sessionStorage.removeItem("autocellAdmin");
-      }
-      syncAdminUi();
+      syncAuthUi();
       render();
     }, (err) => {
       $("loading").textContent = "Không đọc được users: " + err.message;

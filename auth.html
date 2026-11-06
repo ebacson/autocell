@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoCell — Đăng nhập</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #fff;
+      --ink: #1c2430;
+      --muted: #667085;
+      --line: #e6eaf0;
+      --primary: #0b6e4f;
+      --danger: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #d9f3e8 0%, transparent 55%),
+        radial-gradient(900px 400px at 100% 0%, #e8eef8 0%, transparent 50%),
+        var(--bg);
+      color: var(--ink);
+    }
+    header {
+      background: #0e3b2e;
+      color: #fff;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    header strong { font-size: 18px; }
+    header nav { display: flex; gap: 14px; }
+    header nav a { color: #d7efe4; text-decoration: none; font-size: 13px; font-weight: 650; }
+    header nav a[aria-current] { color: #fff; }
+    main {
+      max-width: 420px;
+      margin: 48px auto;
+      padding: 0 16px 40px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 10px 30px rgba(14, 59, 46, 0.06);
+    }
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    .sub { margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tabs button {
+      flex: 1;
+      border: 1px solid var(--line);
+      background: #f8fafb;
+      border-radius: 10px;
+      padding: 10px;
+      cursor: pointer;
+      font-weight: 650;
+      font-size: 13px;
+    }
+    .tabs button.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    .actions { margin-top: 16px; display: grid; gap: 8px; }
+    button.primary {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 14px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.ghost {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 14px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .msg {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+    .msg.err { display: block; background: #fdeceb; color: var(--danger); }
+    .msg.ok { display: block; background: #e7f6ef; color: #067647; }
+    .hint { margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>AutoCell</strong>
+    <nav>
+      <a href="index.html">Bản đồ</a>
+      <a href="users.html">User</a>
+      <a href="about.html">Giới thiệu</a>
+      <a href="auth.html" aria-current="page">Đăng nhập</a>
+    </nav>
+  </header>
+  <main>
+    <div class="card">
+      <h1 id="title">Đăng nhập</h1>
+      <p class="sub" id="subtitle">Dùng Firebase Auth (email + mật khẩu) để quản lý quyền trên web.</p>
+      <div class="tabs">
+        <button type="button" class="on" id="tabLogin">Đăng nhập</button>
+        <button type="button" id="tabRegister">Đăng ký</button>
+      </div>
+      <form id="form">
+        <div id="nameWrap" hidden>
+          <label for="displayName">Tên hiển thị</label>
+          <input id="displayName" autocomplete="name" placeholder="Tên của bạn">
+        </div>
+        <label for="email">Email</label>
+        <input id="email" type="email" required autocomplete="username" placeholder="you@example.com">
+        <label for="password">Mật khẩu</label>
+        <input id="password" type="password" required minlength="6" autocomplete="current-password" placeholder="Tối thiểu 6 ký tự">
+        <div class="actions">
+          <button class="primary" type="submit" id="submit">Đăng nhập</button>
+          <button class="ghost" type="button" id="btnLogout" hidden>Đăng xuất</button>
+        </div>
+      </form>
+      <div class="msg" id="msg"></div>
+      <p class="hint">
+        Tài khoản <b>ebacson@gmail.com</b> là root: cấp admin và support.
+        Admin chỉ được cấp support. Sau khi đăng nhập, mở trang User để quản lý thiết bị và quyền web.
+      </p>
+    </div>
+  </main>
+
+  <script type="module">
+    import {
+      watchAuth, login, register, logout, authErrorMessage, capsFrom
+    } from "./js/auth.js";
+
+    const $ = (id) => document.getElementById(id);
+    let mode = "login";
+    let currentUser = null;
+
+    function setMsg(text, ok) {
+      const box = $("msg");
+      if (!text) {
+        box.className = "msg";
+        box.textContent = "";
+        return;
+      }
+      box.className = "msg " + (ok ? "ok" : "err");
+      box.textContent = text;
+    }
+
+    function setMode(next) {
+      mode = next;
+      const reg = mode === "register";
+      $("tabLogin").classList.toggle("on", !reg);
+      $("tabRegister").classList.toggle("on", reg);
+      $("title").textContent = reg ? "Đăng ký" : "Đăng nhập";
+      $("subtitle").textContent = reg
+        ? "Tạo tài khoản web mới. Mặc định chưa có quyền admin/support."
+        : "Dùng Firebase Auth (email + mật khẩu) để quản lý quyền trên web.";
+      $("nameWrap").hidden = !reg;
+      $("password").autocomplete = reg ? "new-password" : "current-password";
+      $("submit").textContent = reg ? "Tạo tài khoản" : "Đăng nhập";
+      setMsg("");
+    }
+
+    $("tabLogin").onclick = () => setMode("login");
+    $("tabRegister").onclick = () => setMode("register");
+
+    $("form").onsubmit = async (e) => {
+      e.preventDefault();
+      const email = $("email").value.trim();
+      const password = $("password").value;
+      $("submit").disabled = true;
+      setMsg("");
+      try {
+        if (mode === "register") {
+          await register(email, password, $("displayName").value);
+          setMsg("Đăng ký thành công.", true);
+        } else {
+          await login(email, password);
+          setMsg("Đăng nhập thành công.", true);
+        }
+        const next = new URLSearchParams(location.search).get("next") || "users.html";
+        setTimeout(() => { location.href = next; }, 500);
+      } catch (err) {
+        setMsg(authErrorMessage(err), false);
+      } finally {
+        $("submit").disabled = false;
+      }
+    };
+
+    $("btnLogout").onclick = async () => {
+      await logout();
+      setMsg("Đã đăng xuất.", true);
+    };
+
+    watchAuth((user, role, caps) => {
+      currentUser = user;
+      $("btnLogout").hidden = !user;
+      if (user) {
+        $("email").value = user.email || "";
+        setMsg("Đang đăng nhập: " + user.email + " · " + caps.label, true);
+      }
+    });
+  </script>
+</body>
+</html>
