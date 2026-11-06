@@ -1050,18 +1050,45 @@
       box.scrollTop = top;
     }
 
+    function focusUserAndServing(u) {
+      if (!u || !u.located) return;
+      const pts = [[u.lat, u.lng]];
+      const st = u.station || {};
+      const slat = field(st, "lat");
+      const slng = field(st, "long");
+      if (slat != null && slng != null) {
+        pts.push([slat, slng]);
+        const az = Number(st.azimuth);
+        const tilt = num(st.tilt);
+        const height = num(st.height);
+        if (Number.isFinite(az)) {
+          const r = sectorRadius(tilt, height);
+          pts.push(destination(slat, slng, r, az));
+          pts.push(destination(slat, slng, r, az - 30));
+          pts.push(destination(slat, slng, r, az + 30));
+        }
+      }
+      const marker = markers.get(u.id);
+      const open = () => {
+        if (!marker) return;
+        cluster.zoomToShowLayer(marker, () => marker.openPopup());
+      };
+      if (pts.length === 1) {
+        map.flyTo(pts[0], Math.max(map.getZoom(), 14), { duration: 0.6 });
+        setTimeout(open, 650);
+        return;
+      }
+      map.flyToBounds(pts, { padding: [56, 56], maxZoom: 16, duration: 0.7 });
+      setTimeout(open, 750);
+    }
+
     $("list").onclick = (e) => {
       const btn = e.target.closest("button[data-id]");
       if (!btn) return;
       selected = btn.dataset.id;
       const u = users.find((x) => x.id === selected);
       renderList();
-      if (!u || !u.located) return;
-      const marker = markers.get(u.id);
-      map.flyTo([u.lat, u.lng], Math.max(map.getZoom(), 14), { duration: 0.6 });
-      if (marker) {
-        cluster.zoomToShowLayer(marker, () => marker.openPopup());
-      }
+      focusUserAndServing(u);
     };
     $("q").oninput = draw;
     $("filter").onchange = draw;
