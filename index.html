@@ -374,7 +374,7 @@
           const r0 = (radius * i) / radSteps;
           const r1 = (radius * (i + 1)) / radSteps;
           const radialFade = Math.pow(1 - (i + 0.5) / radSteps, 1.45);
-          const opacity = 0.75 * sideFade * radialFade;
+          const opacity = Math.min(1, 0.75 * 1.8 * sideFade * radialFade);
           if (opacity < 0.015) continue;
           const ring = r0 < 1
             ? [
