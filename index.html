@@ -421,8 +421,8 @@
           const r0 = (radius * i) / radSteps;
           const r1 = (radius * (i + 1)) / radSteps;
           const radialFade = Math.pow(1 - (i + 0.5) / radSteps, 0.85);
-          const opacity = Math.min(1, 0.35 + 0.65 * sideFade * radialFade) * 0.5;
-          if (opacity < 0.025) continue;
+          const opacity = Math.min(1, 0.35 + 0.65 * sideFade * radialFade) * 0.35;
+          if (opacity < 0.02) continue;
           const ring = r0 < 1
             ? [
                 [lat, lng],
