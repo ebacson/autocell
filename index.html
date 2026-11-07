@@ -197,10 +197,15 @@
       logout("auth.html");
     };
     const map = L.map("map").setView([16.2, 107.8], 6);
-    const streetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap"
-    });
+    // OSM public tiles often block browsers (x-blocked); use Carto Voyager (OSM data).
+    const streetLayer = L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      {
+        maxZoom: 20,
+        subdomains: "abcd",
+        attribution: "&copy; OpenStreetMap &copy; CARTO"
+      }
+    );
     const satelliteLayer = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       {
