@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <style>
     :root { --ink: #1c2430; --muted: #667085; --line: #e6eaf0; --online: #067647; --offline: #98a2b3; }
     * { box-sizing: border-box; }
@@ -181,6 +182,8 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.20/leaflet-maplibre-gl.js"></script>
   <script type="module">
     import { ref, onValue, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
     import { db, requireAuth, logout } from "./js/auth.js";
@@ -196,15 +199,13 @@
       document.getElementById("wrap").hidden = true;
       logout("auth.html");
     };
-    const map = L.map("map").setView([16.2, 107.8], 6);
-    // OSM public tiles often block browsers; Carto may require a key — use Esri street.
-    const streetLayer = L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-      {
-        maxZoom: 19,
-        attribution: "Tiles &copy; Esri"
-      }
-    );
+    const map = L.map("map", { maxZoom: 20 }).setView([16.2, 107.8], 6);
+    // OpenFreeMap: OSM vector mới, free, không API key (MapLibre trong Leaflet).
+    const streetLayer = L.maplibreGL({
+      style: "https://tiles.openfreemap.org/styles/liberty",
+      interactive: false,
+      attribution: "&copy; OpenStreetMap &copy; OpenFreeMap"
+    });
     const satelliteLayer = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       {
